@@ -10,6 +10,15 @@ export type Logger = {
   warn: LoggerFn
 }
 
+export type Options = {
+  windowMs: number  // How long to remember requests
+  limit: number  // Max requests before limiting client, defaults to 5
+  message: any  
+  statusCode: number  // HTTP status code to send back when a client is rate limited
+  skipFailedRequest: boolean
+  skipSuccessfulRequests: boolean
+}
+
 // Callback which fires when a client's hit counter is adjusted
 export type IncrementCallback = (
   error: Error | undefined,
@@ -17,3 +26,10 @@ export type IncrementCallback = (
   resetTime: Date | undefined,
 ) => void
 
+
+export type RateLimitExceededEventHandler = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  optionsUsed: Options,
+) => void;
