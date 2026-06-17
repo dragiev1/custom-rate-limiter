@@ -1,4 +1,3 @@
-// Types for package
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 
 // Logging function
@@ -32,7 +31,7 @@ export type Options = {
   logger: Logger
 
   /**
-   * IPv6 subnet mask 
+   * IPv6 subnet mask for sensitivity towards rate limiting clients  
    */
   ipv6Subnet: | 64 | 60 | 56 | 52 | 50 | 48 | 32 | number | ValueDeterminingMiddleware<number> | false
 };
@@ -102,4 +101,13 @@ export type Store = {
   //  Flag to indicate keys incremented in one instance of a store object can not affect other instances.
   localKeys?: boolean
 
+}
+
+//  Information related for rate limiting
+export type RateLimitInfo = {
+  limit: number
+  hits: number
+  remaining: number
+  resetTime: Date | undefined
+  key: string  // IPv6 address
 }
