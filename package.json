@@ -1,7 +1,7 @@
 {
   "name": "custom-rate-limiter",
   "version": "1.0.0",
-  "description": "A rate limiter will cap the amount of API requests to minimize resource usage and potentially block abusers utilizing said APIs.",
+  "description": "A rate limiter that caps the amount of API requests to minimize resource usage and potentially block abusers utilizing said APIs.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -18,7 +18,11 @@
   },
   "homepage": "https://github.com/dragiev1/custom-rate-limiter#readme",
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "ip-address": "^10.2.0"
+  },
+  "peerDependencies": {
+    "express": ">= 4.11"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
