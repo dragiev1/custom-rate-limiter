@@ -62,3 +62,33 @@ export type RateLimitRequestHandler = RequestHandler & {
   getKey: (key: string) => | Promise<ClientRateLimitInfo | undefined> | ClientRateLimitInfo | undefined
 }
 
+
+export type Store = {
+  
+  //  Initializes the store and has access to the options passed to the middleware
+  init?: (options: Options) => void | Promise<void>
+
+  //  Fetch a client's hit count and reset time
+  get?: (
+    key: string,
+  ) => Promise<ClientRateLimitInfo | undefined> | ClientRateLimitInfo | undefined
+
+  //  Increment a client's hit counter
+  inc: (key: string) => Promise<IncrementResponse> | IncrementResponse
+
+  //  Decrement a client's hit counter
+  dec: (key: string) => Promise<void> | void
+
+  //  Resets client's hit counter
+  resetKey: (key: string) => Promise<void> | void
+
+  //  Reset everyone's hit counter
+  resetAll?: () => Promise<void> | void
+
+  //  Shutdown the store, stop timers, and release all resources
+  shutdown?: () => Promise<void> | void
+
+  //  Flag to indicate keys incremented in one instance of a store object can not affect other instances.
+  localKeys?: boolean
+
+}
