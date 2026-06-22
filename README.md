@@ -79,5 +79,31 @@ This is how we can avoid, somewhat sophisticated, bots trying to overcome our ra
 
 
 
+## Core Logic
+
+Fully stripped from boilerplate, the main logic of the rate limiter goes like this: 
+
+**1. Should we skip?**
+
+  Sometimes we would want to skip a client's hit given special context. For instance, if a backend error messes up and causes the client to fire another request without them knowing, they are going to potentially get penalized for nothing. Thus, we should see first if we should ignore this hit or not.
+
+**2. Get the key**
+
+  This will be the IPv6/4 address that is generated from our custom key generator using the subnet mask like we discussed earlier.
+
+**3. Increment the hits**
+
+**4. Check limit**
+
+  The crux of the package, checking if a client has reached their limit of request or not within a time interval. 
+
+**5. Block or allow**
+
+Lastly, allow the client to make the request or block them and send a `429: too many requests` message. 
+
+
+
+
+
 
 
