@@ -66,6 +66,7 @@ export type ClientRateLimitInfo = {
   resetTime: Date | undefined
 };
 
+//  Naming convienence
 export type IncrementResponse = ClientRateLimitInfo
 
 export type RateLimitRequestHandler = RequestHandler & {
