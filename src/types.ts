@@ -21,14 +21,15 @@ export type Options = {
   limit: number  // Max requests before limiting client, defaults to 5
   message: any  
   statusCode: number  // HTTP status code to send back when a client is rate limited
-  skipFailedRequest: boolean
-  skipSuccessfulRequests: boolean 
+  requestPropertyName: string
+  skipFailedRequests: boolean
+  skipSuccessfulRequests: boolean
   skip: ValueDeterminingMiddleware<boolean>  // To determine whether this request counts towards a client's allowed limit
   keyGen: ValueDeterminingMiddleware<string>  // Generator for key using IPv6/4
   handler: RateLimitExceededEventHandler  // Express request handler which sends back a response when a client reached their limit
+  reqSuccessful: ValueDeterminingMiddleware<boolean>
   passOnStoreError: boolean  // If the store errors, allow the request
   store: Store  // The store used to store the hit count for every user
-  validate: Store  // List of checks
   logger: Logger
 
   /**
