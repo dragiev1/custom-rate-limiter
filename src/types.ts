@@ -111,3 +111,9 @@ export type RateLimitInfo = {
   resetTime: Date | undefined
   key: string  // IPv6 address
 }
+
+
+//  The extended request object which includes info about client's rate limit
+export type AugmentedRequest = Request & {
+  [key: string]: RateLimitInfo
+}
