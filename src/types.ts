@@ -24,6 +24,7 @@ export type Options = {
   skipFailedRequest: boolean
   skipSuccessfulRequests: boolean 
   skip: ValueDeterminingMiddleware<boolean>  // To determine whether this request counts towards a client's allowed limit
+  keyGen: ValueDeterminingMiddleware<string>  // Generator for key using IPv6/4
   handler: RateLimitExceededEventHandler  // Express request handler which sends back a response when a client reached their limit
   passOnStoreError: boolean  // If the store errors, allow the request
   store: Store  // The store used to store the hit count for every user
