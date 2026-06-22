@@ -29,16 +29,18 @@ export class MemoryStore implements Store {
       this.clearExpired();
     }, this.windowMs);
 
-    // dereference the current interval
+    // dereference the current interval for convienence when shutting down
     this.interval.unref?.()
   }
 
-  // Interface method implementations
+  //  Interface method implementations
+  //  We return Promises to allow users to use this with external databases
 
   async get(key: string): Promise<ClientRateLimitInfo | undefined> {
     return this.current.get(key) ?? this.previous.get(key)
   }
 
+  //  Also responsible for creating new key value pairs if client is new
   async inc(key: string): Promise<ClientRateLimitInfo> {
     const client = this.getClient(key)
     const now = Date.now()
@@ -69,7 +71,7 @@ export class MemoryStore implements Store {
   // Stops timer (if running) and prevents memory leaks
   shutdown(): void {
     clearInterval(this.interval)
-    void this.resetAll()  // returns nothing and clears all clients and addresses
+    void this.resetAll()  // returns nothing and clears all clients and addresses, avoids floating promise warning
   }
 
 
