@@ -86,7 +86,8 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
           e,
           "custom-rate-limiter: error from store, allowing request without rate-limiting."
         );
-      next();
+      //  Pass error to express error handler instead of going through the rate limit
+      else next(e);
       return;
     }
 
