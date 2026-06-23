@@ -49,13 +49,13 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
         storeInit.catch((e) =>
           config.logger.error(
             e,
-            "custom-rate-limiter: async error at store initialization.",
-          ),
+            "custom-rate-limiter: async error at store initialization."
+          )
         );
     } catch (e) {
       config.logger.error(
         e,
-        "custom-rate-limiter: error during initialization.",
+        "custom-rate-limiter: error during initialization."
       );
     }
   }
@@ -63,7 +63,7 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
   const middleware = async (
     req: Request,
     res: Response,
-    next: NextFunction,
+    next: NextFunction
   ) => {
     //  Skip if needed
     const skip = await config.skip(req, res);
@@ -73,53 +73,118 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
     const key = await config.keyGen(req, res);
 
     //  Increment hit count by one
-    let totalHits = 0
-    let resetTime
+    let totalHits = 0;
+    let resetTime;
     try {
-      const incResult = await config.store.inc(key)
+      const incResult = await config.store.inc(key);
       //  Save local values temporarily
-      totalHits = incResult.totalHits
-      resetTime = incResult.resetTime
+      totalHits = incResult.totalHits;
+      resetTime = incResult.resetTime;
     } catch (e) {
       if (config.passOnStoreError)
-        config.logger.error(e, 'custom-rate-limiter: error from store, allowing request without rate-limiting.')
-      next()
-      return
+        config.logger.error(
+          e,
+          "custom-rate-limiter: error from store, allowing request without rate-limiting."
+        );
+      next();
+      return;
     }
 
     //  Check limit for client
-    //  If limit is determined by a function, call it or just grab 
-    const getLimit = typeof config.limit === 'function' ? config.limit(req, res) : config.limit
-    const limit = await getLimit
+    //  If limit is determined by a function, call it or just grab
+    const getLimit =
+      typeof config.limit === "function"
+        ? config.limit(req, res)
+        : config.limit;
+    const limit = await getLimit;
 
     //  Create rate limit info object for client
     const info: RateLimitInfo = {
       limit,
       hits: totalHits,
-      remaining: Math.max(limit-totalHits, 0),
+      remaining: Math.max(limit - totalHits, 0),
       resetTime,
       key,
-    }
+    };
 
     //  Set in stone the current values of info and make it readonly
     //  hidden from stringify and iteration through info objects
-    Object.defineProperty(info, 'current', {
+    Object.defineProperty(info, "current", {
       configurable: false,
       enumerable: false,
       value: totalHits,
-    })
+    });
 
+    //  Ignore certain requests (e.g. 500 server errors don't count)
+    const endOfPromise =
+      (config.skipFailedRequests || config.skipSuccessfulRequests) &&
+      new Promise<void>((resolve) => res.once("finish", resolve));
+    //  If client was disconnected before the server could finish sending
+    const closePromise =
+      config.skipFailedRequests &&
+      new Promise<void>((resolve) => res.once("close", resolve));
+
+    //  Skip failed/successful requests, decrement hit accordingly
+    if (config.skipFailedRequests || config.skipSuccessfulRequests) {
+      let decremented = false;
+
+      //  Ensure we only decrement once per hit recorded
+      //  even if multiple settings are set to true
+      const decrementKey = async () => {
+        if (!decremented) {
+          await config.store.dec(key);
+          decremented = true;
+        }
+      };
+
+      if (config.skipFailedRequests) {
+        if (endOfPromise)
+          void endOfPromise.then(async () => {
+            if (!(await config.reqSuccessful(req, res))) await decrementKey();
+          });
+
+        if (closePromise)
+          void closePromise.then(async () => {
+            //  Checks if the stream was cut short
+            if (!res.writableEnded) await decrementKey();
+          });
+      }
+
+      if (config.skipSuccessfulRequests) {
+        if (endOfPromise) {
+          void endOfPromise.then(async () => {
+            if (await config.reqSuccessful(req, res)) await decrementKey();
+          });
+        }
+      }
+    }
+
+    if (totalHits > limit) {
+      //  Client limit reached; block!
+      config.handler(req, res, next, options);
+      return;
+    }
 
     next();
+  };
+
+  const getThrowFn = () => {
+    throw new Error(
+      "The current store does not support the get/getKey method."
+    );
   };
 
   //  Attach new prop resetKey permanently to ensure this points to correct store
   //  so user only needs the rate limiter and not store object as well
   (middleware as RateLimitRequestHandler).resetKey = config.store.resetKey.bind(
-    config.store,
+    config.store
   );
+  (middleware as RateLimitRequestHandler).getKey =
+    typeof config.store.get === "function"
+      ? config.store.get.bind(config.store)
+      : getThrowFn;
 
-  return middleware;
+  return middleware as RateLimitRequestHandler;
 };
 
 // Type checks and adds defaults for missing option fields
@@ -162,7 +227,7 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
       req: Request,
       res: Response,
       next: NextFunction,
-      optionsUsed: Options,
+      optionsUsed: Options
     ): Promise<void> {
       res.status(config.statusCode);
       //  If message is a method then call it, otherwise save the message
@@ -191,7 +256,7 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
       config.store.init !== "undefined")
   )
     throw new TypeError(
-      "Invalid store was passed. Ensure the store is a class which implements the `Store` interface.",
+      "Invalid store was passed. Ensure the store is a class which implements the `Store` interface."
     );
 
   return config;
@@ -203,7 +268,7 @@ const getOptionsFromConfig = (config: Configuration): Options => {
 
 // Removes properties where their value is set to undefined
 const omitUndefinedProperties = <T extends { [key: string]: any }>(
-  passedOptions: T,
+  passedOptions: T
 ): T => {
   const omitted = {} as T;
 
@@ -215,3 +280,6 @@ const omitUndefinedProperties = <T extends { [key: string]: any }>(
 
   return omitted;
 };
+
+
+export default rateLimit;
