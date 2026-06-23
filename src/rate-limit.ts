@@ -69,6 +69,9 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
     const skip = await config.skip(req, res);
     if (skip) return next();
 
+    //  Creat an augmented request
+    const augmentedRequest = req as AugmentedRequest
+
     //  Get unique key for client
     const key = await config.keyGen(req, res);
 
@@ -116,6 +119,12 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
       value: totalHits,
     });
 
+
+    //  Set the rate limit info on the augmented request object
+    augmentedRequest[config.requestPropertyName] = info
+
+    // TODO: Set standardized X-Rate-Limit headers on 
+
     //  Ignore certain requests (e.g. 500 server errors don't count)
     const endOfPromise =
       (config.skipFailedRequests || config.skipSuccessfulRequests) &&
@@ -138,6 +147,7 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
         }
       };
 
+      //  TODO: Change to switch case maybe?
       if (config.skipFailedRequests) {
         if (endOfPromise)
           void endOfPromise.then(async () => {
