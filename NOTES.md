@@ -101,3 +101,27 @@ Fully stripped from boilerplate, the main logic of the rate limiter goes like th
 
 Lastly, allow the client to make the request or block them and send a `429: too many requests` message. 
 
+
+
+## Headers
+
+When a server responds to an HTTP request, it sends back a status code. For example, `200` for OK or `429 too many requests` and a set of HTTP headers. Pretty much metadata about the response. 
+
+Rate limit headers are specific metadata fields, however, that tell the client exactly what their current rate limit status is. If an API does not send a rate limit header, the client can be blind as to how many shots they have left. 
+
+Another reason headers are necessary is to prevent the "Thundering Herd" scenario. This scenario, in layman's terms, is when a client gets a `429` error, they do not know when the limit resets. 1 hour? 1 day? Who knows? Headers will solve this problem against normal users and they will stop spamming the "reload" or "retry" button a million times and cramping up our servers with unnecessary requests to block.
+
+Since headers are so useful, they became a widely accepted standard. Otherwise known as an IETF Draft. With them implemented, developers will be able to integrate their projects with this rate limiter without necessarily reading the documentation. 
+
+The standard headers for rate limiting are three main ones sent on every response, whether or not it is a `200 OK`, `429 too many requests`, or one when they are blocked.
+
+1. `X-RateLimit-Limit: The request limit the client is allowed to make in the current window. 
+2. `X-RateLimit-Remaining: Number of requests left in current window.
+3. `X-RateLimit-Reset: Amount of time until the rate limit resets and their counter goes to 0. 
+4. `Retry-After`: Sent only when user has already hit their limit with a `429` status code. Explains how many seconds they have to wait until making another request. 
+
+This is how the rate limiter is useful in the eyes of the user without silently banishing them into the shadow realm of rate limited disorient. 
+
+
+
+

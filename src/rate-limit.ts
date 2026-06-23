@@ -142,13 +142,13 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
         if (endOfPromise)
           void endOfPromise.then(async () => {
             if (!(await config.reqSuccessful(req, res))) await decrementKey();
-          });
+          }).catch((e) => {config.logger.error(e, "custom-rate-limiter: error during request cleanup.")});
 
         if (closePromise)
           void closePromise.then(async () => {
             //  Checks if the stream was cut short
             if (!res.writableEnded) await decrementKey();
-          });
+          }).catch((e) => {config.logger.error(e, "custom-rate-limiter: error during request cleanup.")});
       }
 
       if (config.skipSuccessfulRequests) {
