@@ -251,9 +251,9 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
     typeof config.store.dec !== "function" ||
     typeof config.store.resetKey !== "function" ||
     (typeof config.store.resetAll !== "function" &&
-      config.store.resetAll !== "undefined") ||
+      typeof config.store.resetAll !== "undefined") ||
     (typeof config.store.init !== "function" &&
-      config.store.init !== "undefined")
+      typeof config.store.init !== "undefined")
   )
     throw new TypeError(
       "Invalid store was passed. Ensure the store is a class which implements the `Store` interface."
