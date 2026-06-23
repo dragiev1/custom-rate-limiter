@@ -6,6 +6,7 @@ import {
   Logger,
   Options,
   RateLimitExceededEventHandler,
+  RateLimitInfo,
   RateLimitReachedEventHandler,
   RateLimitRequestHandler,
   Store,
@@ -35,6 +36,7 @@ type Configuration = {
   logger: Logger;
 };
 
+//  IP rate limiter middleware
 const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
   const config = parseOptions(passedOptions ?? {});
   const options = getOptionsFromConfig(config);
@@ -63,16 +65,50 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
     res: Response,
     next: NextFunction,
   ) => {
+    //  Skip if needed
     const skip = await config.skip(req, res);
     if (skip) return next();
 
+    //  Get unique key for client
     const key = await config.keyGen(req, res);
 
-    const { totalHits } = await config.store.inc(key);
-    console.log(`User ${key} has ${totalHits} hits.`);
+    //  Increment hit count by one
+    let totalHits = 0
+    let resetTime
+    try {
+      const incResult = await config.store.inc(key)
+      //  Save local values temporarily
+      totalHits = incResult.totalHits
+      resetTime = incResult.resetTime
+    } catch (e) {
+      if (config.passOnStoreError)
+        config.logger.error(e, 'custom-rate-limiter: error from store, allowing request without rate-limiting.')
+      next()
+      return
+    }
 
-    if (totalHits > config.limit)
-      return config.handler(req, res, next, passedOptions);
+    //  Check limit for client
+    //  If limit is determined by a function, call it or just grab 
+    const getLimit = typeof config.limit === 'function' ? config.limit(req, res) : config.limit
+    const limit = await getLimit
+
+    //  Create rate limit info object for client
+    const info: RateLimitInfo = {
+      limit,
+      hits: totalHits,
+      remaining: Math.max(limit-totalHits, 0),
+      resetTime,
+      key,
+    }
+
+    //  Set in stone the current values of info and make it readonly
+    //  hidden from stringify and iteration through info objects
+    Object.defineProperty(info, 'current', {
+      configurable: false,
+      enumerable: false,
+      value: totalHits,
+    })
+
 
     next();
   };
