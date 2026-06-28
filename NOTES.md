@@ -111,17 +111,24 @@ Rate limit headers are specific metadata fields, however, that tell the client e
 
 Another reason headers are necessary is to prevent the "Thundering Herd" scenario. This scenario, in layman's terms, is when a client gets a `429` error, they do not know when the limit resets. 1 hour? 1 day? Who knows? Headers will solve this problem against normal users and they will stop spamming the "reload" or "retry" button a million times and cramping up our servers with unnecessary requests to block.
 
-Since headers are so useful, they became a widely accepted standard. Otherwise known as an IETF Draft. With them implemented, developers will be able to integrate their projects with this rate limiter without necessarily reading the documentation. 
+Since headers are so useful, they became a widely accepted standard. Otherwise known as an `IETF Draft`. With them implemented, developers will be able to integrate their projects with this rate limiter without necessarily reading the documentation. 
 
 The standard headers for rate limiting are three main ones sent on every response, whether or not it is a `200 OK`, `429 too many requests`, or one when they are blocked.
 
-1. `X-RateLimit-Limit: The request limit the client is allowed to make in the current window. 
-2. `X-RateLimit-Remaining: Number of requests left in current window.
-3. `X-RateLimit-Reset: Amount of time until the rate limit resets and their counter goes to 0. 
+1. `RateLimit-Limit: The request limit the client is allowed to make in the current window. 
+2. `RateLimit-Remaining: Number of requests left in current window.
+3. `RateLimit-Reset: Amount of time until the rate limit resets and their counter goes to 0. 
 4. `Retry-After`: Sent only when user has already hit their limit with a `429` status code. Explains how many seconds they have to wait until making another request. 
 
 This is how the rate limiter is useful in the eyes of the user without silently banishing them into the shadow realm of rate limited disorient. 
 
+### Drafts
 
+Briefly, a draft (`IETF Draft`) is when the IETF realizes the internet has a new problem that needs a standard solution. The problem was many big tech companies would use different headers for their rate limiters, so using API monitoring tools like Postman became nearly impossible to detect rate limits because they did not know which header to look for.
 
+IETF decided that the solution to this problem would be to set standard headers that would be used universally. It was officially called `draft-ietf-httpapi-ratelimit-headers` (the `RateLimit-X` format). 
+
+If we want this rate limiter to be widely used pubically, we should implement support for these. 
+
+*Note: There exists legacy headers which take the form: `X-RateLimit-Y`. Providing support for these would be good for older systems that follow the old header formatting.*
 
