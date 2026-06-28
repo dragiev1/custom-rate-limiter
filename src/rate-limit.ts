@@ -69,7 +69,7 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
     const skip = await config.skip(req, res);
     if (skip) return next();
 
-    //  Creat an augmented request
+    //  Create an augmented request
     const augmentedRequest = req as AugmentedRequest
 
     //  Get unique key for client
@@ -158,14 +158,14 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
           void closePromise.then(async () => {
             //  Checks if the stream was cut short
             if (!res.writableEnded) await decrementKey();
-          }).catch((e) => {config.logger.error(e, "custom-rate-limiter: error during request cleanup.")});
+          }).catch((e) => {config.logger.error(e, "custom-rate-limiter: error during request closing.")});
       }
 
       if (config.skipSuccessfulRequests) {
         if (endOfPromise) {
           void endOfPromise.then(async () => {
             if (await config.reqSuccessful(req, res)) await decrementKey();
-          });
+          }).catch((e) => {config.logger.error(e, "custom-rate-limiter: error during skipping successful requests.")});
         }
       }
     }
