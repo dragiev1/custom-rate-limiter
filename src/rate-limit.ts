@@ -1,5 +1,4 @@
 // Rate limit middleware
-
 import { Request, Response, NextFunction } from "express";
 import {
   AugmentedRequest,
@@ -20,9 +19,13 @@ import {
   setDraft6Headers,
   setDraft7Headers,
   setDraft8Headers,
+  setLegacyHeaders,
 } from "./headers";
 
-//  Dupe of Options, but strictly for rate-limit.ts and has no access by the user
+/**
+ * Dupe object of Options purely for type safety and dev experience.
+ * Every property is guaranteed to have a default value.
+ */
 type Configuration = {
   windowMs: number;
   limit: number | ValueDeterminingMiddleware<number>; // Value can be static or from custom method made by developer
@@ -48,8 +51,8 @@ type Configuration = {
 const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
   const config = parseOptions(passedOptions ?? {});
   const options = getOptionsFromConfig(config);
-
-  //  Call store initialization method if it exists
+  
+  //  Call store initialization method
   if (typeof config.store.init === "function") {
     try {
       const storeInit = config.store.init(options);
@@ -130,8 +133,11 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
     //  Set the rate limit info on the augmented request object
     augmentedRequest[config.requestPropertyName] = info;
 
-    // Set standardized Rate-Limit headers on response object if needed
-    if (config.legacyHeaders && !res.headersSent) {
+    //  Set the 'X-RateLimit' hears on the response object if enabled
+    if (config.legacyHeaders && !res.headersSent) setLegacyHeaders(res, info)
+
+    //  Set standardized Rate-Limit headers on response object if needed
+    if (config.standardHeaders && !res.headersSent) {
       switch (config.standardHeaders) {
         case "draft-6":
           setDraft6Headers(res, info, config.windowMs);
@@ -272,6 +278,8 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
     reqSuccessful: (req: Request, res: Response): boolean =>
       res.statusCode < 400,
     skip: (req: Request, res: Response): boolean => false,
+
+    //  Make async to allow more complexity if wanted, otherwise it acts synchronously
     async keyGen(req: Request, res: Response): Promise<string> {
       const ip: string = req.ip!;
 
