@@ -6,7 +6,7 @@ type Client = {
   resetTime: Date
 }
 
-
+//  Stores the hit count for each client in memory
 export class MemoryStore implements Store {  
   windowMs!: number  // Time before all counts are reset (milliseconds)
 

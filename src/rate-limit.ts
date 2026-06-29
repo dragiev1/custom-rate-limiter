@@ -3,11 +3,11 @@
 import { Request, Response, NextFunction } from "express";
 import {
   AugmentedRequest,
+  DraftHeadersVersion,
   Logger,
   Options,
   RateLimitExceededEventHandler,
   RateLimitInfo,
-  RateLimitReachedEventHandler,
   RateLimitRequestHandler,
   Store,
   ValueDeterminingMiddleware,
@@ -17,6 +17,7 @@ import { MemoryStore } from "./memory-store";
 import { ipKeyGen } from "./ip-key-gen";
 import { isIPv6 } from "node:net";
 
+
 //  Dupe of Options, but strictly for rate-limit.ts and has no access by the user
 type Configuration = {
   windowMs: number;
@@ -24,6 +25,9 @@ type Configuration = {
   message: any | ValueDeterminingMiddleware<any>;
   statusCode: number;
   requestPropertyName: string;
+  legacyHeaders: boolean;
+  standardHeaders: false | DraftHeadersVersion;
+  identifier: string | ValueDeterminingMiddleware<string>;
   skipFailedRequests: boolean;
   skipSuccessfulRequests: boolean;
   keyGen: ValueDeterminingMiddleware<string>;
@@ -35,6 +39,7 @@ type Configuration = {
   passOnStoreError: boolean;
   logger: Logger;
 };
+
 
 //  IP rate limiter middleware
 const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
@@ -124,6 +129,9 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
     augmentedRequest[config.requestPropertyName] = info
 
     // TODO: Set standardized X-Rate-Limit headers on 
+    
+
+
 
     //  Ignore certain requests (e.g. 500 server errors don't count)
     const endOfPromise =
@@ -200,10 +208,14 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
 
 // Type checks and adds defaults for missing option fields
 const parseOptions = (passedOptions: Partial<Options>): Configuration => {
+
   const definedOptions: Partial<Options> =
     omitUndefinedProperties<Partial<Options>>(passedOptions);
 
   const logger = passedOptions.logger ?? ConsoleLogger;
+
+  let standardHeaders = definedOptions.standardHeaders ?? false
+  if (standardHeaders === true) standardHeaders = 'draft-6'  // Default to draft-6
 
   const config: Configuration = {
     windowMs: 60 * 1000, // 1 min
@@ -211,6 +223,8 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
     message: "Too many request, please try again later.",
     statusCode: 429,
     requestPropertyName: "rateLimit",
+    legacyHeaders: definedOptions.legacyHeaders ?? true,
+
     skipFailedRequests: false,
     skipSuccessfulRequests: false,
     reqSuccessful: (req: Request, res: Response): boolean =>
@@ -233,6 +247,24 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
     },
     ipv6Subnet: 56,
 
+    identifier(req: Request, _res: Response): string {
+      let duration = ''
+      const property = config.requestPropertyName
+
+      const { limit } = (req as AugmentedRequest)[property]
+      const seconds = config.windowMs / 1000
+      const minutes = config.windowMs / (1000 * 60)
+      const hours = config.windowMs / (1000 * 60 * 60)
+      const days = config.windowMs / (1000 * 60 * 60 * 24)
+
+      if (seconds < 60) duration = `${seconds}sec`
+      else if (minutes < 60) duration = `${minutes}min`
+      else if (hours < 24) duration = `${hours}hrs`
+      else duration = `${days}days`
+
+      return `${limit}-in-${duration}`
+    },
+
     //  Handles when user is rate limited
     async handler(
       req: Request,
@@ -252,6 +284,7 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
     },
     passOnStoreError: false,
     ...definedOptions, // Allow fields above to be overwritten by already defined options
+    standardHeaders,
     store: definedOptions.store ?? new MemoryStore(), // If store does not exist, create a new one
     logger,
   };
