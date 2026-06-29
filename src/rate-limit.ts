@@ -1,6 +1,6 @@
 // Rate limit middleware
 
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction, response } from "express";
 import {
   AugmentedRequest,
   DraftHeadersVersion,
@@ -16,7 +16,11 @@ import { ConsoleLogger } from "./console-logger";
 import { MemoryStore } from "./memory-store";
 import { ipKeyGen } from "./ip-key-gen";
 import { isIPv6 } from "node:net";
-
+import {
+  setDraft6Headers,
+  setDraft7Headers,
+  setDraft8Headers,
+} from "./headers";
 
 //  Dupe of Options, but strictly for rate-limit.ts and has no access by the user
 type Configuration = {
@@ -40,7 +44,6 @@ type Configuration = {
   logger: Logger;
 };
 
-
 //  IP rate limiter middleware
 const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
   const config = parseOptions(passedOptions ?? {});
@@ -54,13 +57,13 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
         storeInit.catch((e) =>
           config.logger.error(
             e,
-            "custom-rate-limiter: async error at store initialization."
-          )
+            "custom-rate-limiter: async error at store initialization.",
+          ),
         );
     } catch (e) {
       config.logger.error(
         e,
-        "custom-rate-limiter: error during initialization."
+        "custom-rate-limiter: error during initialization.",
       );
     }
   }
@@ -68,14 +71,14 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
   const middleware = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     //  Skip if needed
     const skip = await config.skip(req, res);
     if (skip) return next();
 
     //  Create an augmented request
-    const augmentedRequest = req as AugmentedRequest
+    const augmentedRequest = req as AugmentedRequest;
 
     //  Get unique key for client
     const key = await config.keyGen(req, res);
@@ -92,7 +95,7 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
       if (config.passOnStoreError)
         config.logger.error(
           e,
-          "custom-rate-limiter: error from store, allowing request without rate-limiting."
+          "custom-rate-limiter: error from store, allowing request without rate-limiting.",
         );
       //  Pass error to express error handler instead of going through the rate limit
       else next(e);
@@ -124,14 +127,33 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
       value: totalHits,
     });
 
-
     //  Set the rate limit info on the augmented request object
-    augmentedRequest[config.requestPropertyName] = info
+    augmentedRequest[config.requestPropertyName] = info;
 
-    // TODO: Set standardized X-Rate-Limit headers on 
-    
+    // Set standardized Rate-Limit headers on response object if needed
+    if (config.legacyHeaders && !response.headersSent) {
+      switch (config.standardHeaders) {
+        case "draft-6":
+          setDraft6Headers(res, info, config.windowMs);
+          break;
 
+        case "draft-7":
+          setDraft7Headers(res, info, config.windowMs);
+          break;
 
+        case "draft-8":
+          const getName =
+            typeof config.identifier === "function"
+              ? config.identifier(req, res)
+              : config.identifier;
+          const name = await getName
+          setDraft8Headers(res, info, config.windowMs, key, name);
+          break;
+
+        default:
+          break;
+      }
+    }
 
     //  Ignore certain requests (e.g. 500 server errors don't count)
     const endOfPromise =
@@ -158,22 +180,43 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
       //  TODO: Change to switch case maybe?
       if (config.skipFailedRequests) {
         if (endOfPromise)
-          void endOfPromise.then(async () => {
-            if (!(await config.reqSuccessful(req, res))) await decrementKey();
-          }).catch((e) => {config.logger.error(e, "custom-rate-limiter: error during request cleanup.")});
+          void endOfPromise
+            .then(async () => {
+              if (!(await config.reqSuccessful(req, res))) await decrementKey();
+            })
+            .catch((e) => {
+              config.logger.error(
+                e,
+                "custom-rate-limiter: error during request cleanup.",
+              );
+            });
 
         if (closePromise)
-          void closePromise.then(async () => {
-            //  Checks if the stream was cut short
-            if (!res.writableEnded) await decrementKey();
-          }).catch((e) => {config.logger.error(e, "custom-rate-limiter: error during request closing.")});
+          void closePromise
+            .then(async () => {
+              //  Checks if the stream was cut short
+              if (!res.writableEnded) await decrementKey();
+            })
+            .catch((e) => {
+              config.logger.error(
+                e,
+                "custom-rate-limiter: error during request closing.",
+              );
+            });
       }
 
       if (config.skipSuccessfulRequests) {
         if (endOfPromise) {
-          void endOfPromise.then(async () => {
-            if (await config.reqSuccessful(req, res)) await decrementKey();
-          }).catch((e) => {config.logger.error(e, "custom-rate-limiter: error during skipping successful requests.")});
+          void endOfPromise
+            .then(async () => {
+              if (await config.reqSuccessful(req, res)) await decrementKey();
+            })
+            .catch((e) => {
+              config.logger.error(
+                e,
+                "custom-rate-limiter: error during skipping successful requests.",
+              );
+            });
         }
       }
     }
@@ -189,14 +232,14 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
 
   const getThrowFn = () => {
     throw new Error(
-      "The current store does not support the get/getKey method."
+      "The current store does not support the get/getKey method.",
     );
   };
 
   //  Attach new prop resetKey permanently to ensure this points to correct store
   //  so user only needs the rate limiter and not store object as well
   (middleware as RateLimitRequestHandler).resetKey = config.store.resetKey.bind(
-    config.store
+    config.store,
   );
   (middleware as RateLimitRequestHandler).getKey =
     typeof config.store.get === "function"
@@ -208,14 +251,13 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
 
 // Type checks and adds defaults for missing option fields
 const parseOptions = (passedOptions: Partial<Options>): Configuration => {
-
   const definedOptions: Partial<Options> =
     omitUndefinedProperties<Partial<Options>>(passedOptions);
 
   const logger = passedOptions.logger ?? ConsoleLogger;
 
-  let standardHeaders = definedOptions.standardHeaders ?? false
-  if (standardHeaders === true) standardHeaders = 'draft-6'  // Default to draft-6
+  let standardHeaders = definedOptions.standardHeaders ?? false;
+  if (standardHeaders === true) standardHeaders = "draft-6"; // Default to draft-6
 
   const config: Configuration = {
     windowMs: 60 * 1000, // 1 min
@@ -248,21 +290,21 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
     ipv6Subnet: 56,
 
     identifier(req: Request, _res: Response): string {
-      let duration = ''
-      const property = config.requestPropertyName
+      let duration = "";
+      const property = config.requestPropertyName;
 
-      const { limit } = (req as AugmentedRequest)[property]
-      const seconds = config.windowMs / 1000
-      const minutes = config.windowMs / (1000 * 60)
-      const hours = config.windowMs / (1000 * 60 * 60)
-      const days = config.windowMs / (1000 * 60 * 60 * 24)
+      const { limit } = (req as AugmentedRequest)[property];
+      const seconds = config.windowMs / 1000;
+      const minutes = config.windowMs / (1000 * 60);
+      const hours = config.windowMs / (1000 * 60 * 60);
+      const days = config.windowMs / (1000 * 60 * 60 * 24);
 
-      if (seconds < 60) duration = `${seconds}sec`
-      else if (minutes < 60) duration = `${minutes}min`
-      else if (hours < 24) duration = `${hours}hrs`
-      else duration = `${days}days`
+      if (seconds < 60) duration = `${seconds}sec`;
+      else if (minutes < 60) duration = `${minutes}min`;
+      else if (hours < 24) duration = `${hours}hrs`;
+      else duration = `${days}days`;
 
-      return `${limit}-in-${duration}`
+      return `${limit}-in-${duration}`;
     },
 
     //  Handles when user is rate limited
@@ -270,7 +312,7 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
       req: Request,
       res: Response,
       next: NextFunction,
-      optionsUsed: Options
+      optionsUsed: Options,
     ): Promise<void> {
       res.status(config.statusCode);
       //  If message is a method then call it, otherwise save the message
@@ -300,7 +342,7 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
       typeof config.store.init !== "undefined")
   )
     throw new TypeError(
-      "Invalid store was passed. Ensure the store is a class which implements the `Store` interface."
+      "Invalid store was passed. Ensure the store is a class which implements the `Store` interface.",
     );
 
   return config;
@@ -312,7 +354,7 @@ const getOptionsFromConfig = (config: Configuration): Options => {
 
 // Removes properties where their value is set to undefined
 const omitUndefinedProperties = <T extends { [key: string]: any }>(
-  passedOptions: T
+  passedOptions: T,
 ): T => {
   const omitted = {} as T;
 
@@ -324,6 +366,5 @@ const omitUndefinedProperties = <T extends { [key: string]: any }>(
 
   return omitted;
 };
-
 
 export default rateLimit;
