@@ -1,6 +1,6 @@
 // Rate limit middleware
 
-import { Request, Response, NextFunction, response } from "express";
+import { Request, Response, NextFunction } from "express";
 import {
   AugmentedRequest,
   DraftHeadersVersion,
@@ -131,7 +131,7 @@ const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
     augmentedRequest[config.requestPropertyName] = info;
 
     // Set standardized Rate-Limit headers on response object if needed
-    if (config.legacyHeaders && !response.headersSent) {
+    if (config.legacyHeaders && !res.headersSent) {
       switch (config.standardHeaders) {
         case "draft-6":
           setDraft6Headers(res, info, config.windowMs);
