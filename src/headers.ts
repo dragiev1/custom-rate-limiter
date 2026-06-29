@@ -1,4 +1,4 @@
-import { Response, Request, NextFunction } from 'express'
+import { Response } from 'express'
 import { RateLimitInfo } from './types'
 import { createHash } from 'node:crypto'
 import { Buffer } from 'node:buffer'
