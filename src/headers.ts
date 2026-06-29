@@ -35,6 +35,25 @@ export const setLegacyHeaders = (
 
 // TODO: Create methods for SUPPORTED_DRAFT_VERSIONS headers
 
+//  Sets headers for Draft 6 version
+export const setDraft6Headers = (
+  res: Response, 
+  info: RateLimitInfo,
+  windowMs: number,
+): void => {
+  if(res.headersSent) return
+
+  const windowSeconds = Math.ceil(windowMs/1000)
+  const resetSeconds = getSeconds(windowMs, info.resetTime)
+
+  res.setHeader('RateLimit-Policy', `${info.limit};w=${windowSeconds}`)
+  res.setHeader('RateLimit-Limit', info.limit.toString())
+  res.setHeader('RateLimit-Remaining', info.remaining.toString())
+
+  if(typeof resetSeconds === 'number') res.setHeader('RateLimit-Reset', resetSeconds.toString())
+}
+
+
 // Bare bones boilerplate method for setting headers conventionally
 export const setHeaders = (res: Response, info: RateLimitInfo) => {
   res.set('RateLimit-Limit', String(info.limit));
