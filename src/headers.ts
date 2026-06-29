@@ -53,6 +53,23 @@ export const setDraft6Headers = (
   if(typeof resetSeconds === 'number') res.setHeader('RateLimit-Reset', resetSeconds.toString())
 }
 
+//  Sets headers for Draft 7 version
+export const setDraft7Headers = (
+  res: Response,
+  info: RateLimitInfo,
+  windowMs: number,
+): void => {
+  if(res.headersSent) return
+
+  const windowSeconds = Math.ceil(windowMs/1000) 
+  const resetSeconds = getSeconds(windowMs, info.resetTime)
+
+  res.setHeader('RateLimit-Policy', `${info.limit};w=${windowSeconds}`)
+  res.setHeader('RateLimit', `limit=${info.limit}, remaining=${info.remaining}, reset=${resetSeconds}`)
+}
+
+//  Sets headers for Draft 8 version
+
 
 // Bare bones boilerplate method for setting headers conventionally
 export const setHeaders = (res: Response, info: RateLimitInfo) => {
@@ -60,3 +77,4 @@ export const setHeaders = (res: Response, info: RateLimitInfo) => {
   res.set('RateLimit-Remaining', String(info.remaining));
   res.set('RateLimit-Reset', String(info.resetTime?.getMinutes));
 }
+
