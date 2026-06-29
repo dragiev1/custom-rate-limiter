@@ -1,4 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import { SUPPORTED_DRAFT_VERSIONS } from './headers';
 
 // Logging function
 export type LoggerFn = (error: unknown, message?: string) => void;
@@ -8,6 +9,8 @@ export type Logger = {
   error: LoggerFn,
   warn: LoggerFn
 };
+
+export type DraftHeadersVersion = (typeof SUPPORTED_DRAFT_VERSIONS)[number]
 
 // Generate or retrieve a value based on the incoming request
 export type ValueDeterminingMiddleware<T> = (
@@ -22,6 +25,13 @@ export type Options = {
   message: any  
   statusCode: number  // HTTP status code to send back when a client is rate limited
   requestPropertyName: string
+
+  legacyHeaders: boolean  //  Whether to use "X-Rate..." old headers
+  //  Support standardized headers (defaults to false)
+  standardHeaders: boolean | DraftHeadersVersion 
+  //  8th draft specification for the name used to identify the quota policy in headers
+  identifier: string | ValueDeterminingMiddleware<string>  
+
   skipFailedRequests: boolean
   skipSuccessfulRequests: boolean
   skip: ValueDeterminingMiddleware<boolean>  // To determine whether this request counts towards a client's allowed limit
@@ -70,6 +80,8 @@ export type ClientRateLimitInfo = {
 //  Naming convienence
 export type IncrementResponse = ClientRateLimitInfo
 
+
+//  To reset a client's hit counter
 export type RateLimitRequestHandler = RequestHandler & {
   resetKey: (key: string) => void
   getKey: (key: string) => | Promise<ClientRateLimitInfo | undefined> | ClientRateLimitInfo | undefined
