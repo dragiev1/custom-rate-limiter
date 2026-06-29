@@ -17,8 +17,23 @@ const getSeconds = (windowMs: number, resetTime?: Date): number => {
   return seconds
 }
 
-// TODO: Create methods for setting legacy and SUPPORTED_DRAFT_VERSIONS headers
+export const setLegacyHeaders = (
+  res: Response,
+  info: RateLimitInfo,
+): void => {
+  if (res.headersSent) return
+  
+  res.setHeader('X-RateLimit-Limit', info.limit.toString())
+  res.setHeader('X-RateLimit-Remaining', info.remaining.toString())
+  
+  // Type check reset is a Date object
+  if(info.resetTime instanceof Date) {
+    res.setHeader('Date', new Date().toUTCString())
+    res.setHeader('X-RateLimit-Reset', Math.ceil(info.resetTime.getTime() / 1000).toString())
+  }
+}
 
+// TODO: Create methods for SUPPORTED_DRAFT_VERSIONS headers
 
 // Bare bones boilerplate method for setting headers conventionally
 export const setHeaders = (res: Response, info: RateLimitInfo) => {
