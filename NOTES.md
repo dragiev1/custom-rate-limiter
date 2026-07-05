@@ -132,3 +132,17 @@ If we want this rate limiter to be widely used pubically, we should implement su
 
 *Note: There exists legacy headers which take the form: `X-RateLimit-Y`. Providing support for these would be good for older systems that follow the old header formatting.*
 
+
+
+## Validation
+
+Final steps to the rate limiter are creating validation methods that validate and error-handle for the library. It primarily acts as a crosschecker to catch bugs or security flaws by checking the developer's configuration of the limiter, the environment, and possibly runtime behavior. 
+
+The architecture for understanding the validation phase of the limiter, we need a couple objects that hold data in the current state of the program. 
+
+* `validations`: this object contains all the individual checks, basically if the IP is valid or not, or "Is the trust proxy set correctly?"
+* State: variables (like `userStores`) track information across the lifecycle of the app to prevent logical errors. 
+* `getValidations`: a function that wraps all the rules together so that they can be activated, or deactivated, and log errors instead of crashing the server. 
+
+It is important that we do not cause the entire program to crash due to the rate limiter alone, as that would be a massive detriment to the developers that want to use it. 
+
