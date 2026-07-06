@@ -141,8 +141,12 @@ Final steps to the rate limiter are creating validation methods that validate an
 The architecture for understanding the validation phase of the limiter, we need a couple objects that hold data in the current state of the program. 
 
 * `validations`: this object contains all the individual checks, basically if the IP is valid or not, or "Is the trust proxy set correctly?"
-* State: variables (like `userStores`) track information across the lifecycle of the app to prevent logical errors. 
+* Global State: variables (like `userStores`) track information across the lifecycle of the app to prevent logical errors. 
 * `getValidations`: a function that wraps all the rules together so that they can be activated, or deactivated, and log errors instead of crashing the server. 
 
 It is important that we do not cause the entire program to crash due to the rate limiter alone, as that would be a massive detriment to the developers that want to use it. 
+
+`userStores` specifically creates a set data structure to track every Store instance that has been passed to a rate limiter. This makes sure that a developer does not accidentally share the exact same store instance across various rate limiters, which would obviously cause bugs. 
+
+`singleCountKeys` maps an Express `Request` to the keys that have been counted. Using a WeakMap because it used the `Request` object as the key, so when the request finishes and it is garbage collected by Node.js, the memory is automatically freed. This overall prevents memory leaks by ensuring that a single HTTP requets does not accidentally increment the rate limiter `hitCount` twice. 
 
