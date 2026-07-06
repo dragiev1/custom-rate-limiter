@@ -47,7 +47,7 @@ const validations = {
     for (const k of Object.keys(this.enabled)) this.enabled[k] = false
   },
 
-  // Network related validation checks.
+  // Network related validation checks
   
   ip(ip: string | undefined) {
     if (ip === undefined) throw new ValidationError(
@@ -59,6 +59,24 @@ const validations = {
       'custom-rate-limiter: INVALID_IP_ADDRESS',
       `An invalid 'request.ip' was detected (${ip}).`
     )
+  },
+
+  // Proxy validation to make sure it is not set to true
+  trustProxy(req: Request) {
+    if (req.app.get('trust proxy') === true)
+      throw new ValidationError(
+        'custom-rate-limiter: PERMISSIVE_TRUST_PROXY',
+        `The Express 'trust proxy' setting is true, allowing anyone to bypass the rate limiter easily.`
+      )
+  },
+
+  // Proxy validation for 'X-Forwarded-For' header case
+  xForwardedForHeader(req: Request) {
+    if (req.headers['x-forwarded-for'] && req.app.get('trust proxy') === false)
+      throw new ValidationError(
+        'custom-rate-limiter: UNEXPECTED_X_FORWARDED_FOR',
+        `The 'X-Forwarded-For' header is set but Express 'trust proxy' setting is false by default. This is potentially caused by a misconfiguration in settings and can also prevent the rate limiter from accurately identifying users.`
+      )
   },
 
   

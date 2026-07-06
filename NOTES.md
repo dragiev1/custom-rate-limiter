@@ -150,3 +150,8 @@ It is important that we do not cause the entire program to crash due to the rate
 
 `singleCountKeys` maps an Express `Request` to the keys that have been counted. Using a WeakMap because it used the `Request` object as the key, so when the request finishes and it is garbage collected by Node.js, the memory is automatically freed. This overall prevents memory leaks by ensuring that a single HTTP requets does not accidentally increment the rate limiter `hitCount` twice. 
 
+### Network Checks
+
+There are some network checks we must validate in order for our rate limiter to be safely utilized in a developer environment. One of which would be properly validating IP addresses; simple enough. But one thing that is most important to check is the `trust proxy` attribute in the request object. 
+
+The reason `trust proxy` must not be `true` is because this essentially allows clients to bypass the rate limiter altogether. Not ideal, so we must check that it is set to false by calling `app` from the Express request object and then use the `get` method to grab the `trust proxy` attribute for validation. 
