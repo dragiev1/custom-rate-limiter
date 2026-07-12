@@ -70,6 +70,9 @@ const validations = {
       )
   },
 
+
+  /* Checks for mismatches. */ 
+
   // Proxy validation for 'X-Forwarded-For' header case
   xForwardedForHeader(req: Request) {
     if (req.headers['x-forwarded-for'] && req.app.get('trust proxy') === false)
@@ -79,5 +82,18 @@ const validations = {
       )
   },
 
+
+  // Alert user if Forwarded header is set (standardized version of X-Forwarded-For)
+  forwardedHeader(req: Request) {
+    if ( req.headers.forwarded && req.ip === req.socket?.remoteAddress) 
+      throw new ValidationError(
+        'custom-rate-limiter: FORWARDED_HEADER',
+        `The 'Forwarded' header (standardized X-Forwarded-For) is set but currently being ignored. Add a custom keyGen to use a value from this header.`
+      )
+  },
+
+
+  /* Store and counting validations */
+  
   
 }
