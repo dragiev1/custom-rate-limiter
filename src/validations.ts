@@ -42,7 +42,7 @@ const validations = {
     default: true,
   } as { [key: string]: boolean },
  
-  // Method for disabling validations
+  // Method for disabling validations, not very recommended
   disable() {
     for (const k of Object.keys(this.enabled)) this.enabled[k] = false
   },

@@ -134,7 +134,7 @@ If we want this rate limiter to be widely used pubically, we should implement su
 
 
 
-## Validation
+## Validations
 
 Final steps to the rate limiter are creating validation methods that validate and error-handle for the library. It primarily acts as a crosschecker to catch bugs or security flaws by checking the developer's configuration of the limiter, the environment, and possibly runtime behavior. 
 
@@ -148,7 +148,12 @@ It is important that we do not cause the entire program to crash due to the rate
 
 `userStores` specifically creates a set data structure to track every Store instance that has been passed to a rate limiter. This makes sure that a developer does not accidentally share the exact same store instance across various rate limiters, which would obviously cause bugs. 
 
-`singleCountKeys` maps an Express `Request` to the keys that have been counted. Using a WeakMap because it used the `Request` object as the key, so when the request finishes and it is garbage collected by Node.js, the memory is automatically freed. This overall prevents memory leaks by ensuring that a single HTTP requets does not accidentally increment the rate limiter `hitCount` twice. 
+Since it is very easy to accidentally apply middleware twice to the same route by applying it globally on the `app`, and then again on a specific router for instance. So we create the `singleCountKeys` data structure which maps an Express `Request` to the keys that have been counted. For this specific HTTP request, we keep a list of keys we have already  counted. If we try to count it again, we want to throw an error! But if we store these request objects as keys in a standard `Map`, they will be there forever as even after the response is finished, so their data is still there taking up precious space. Utilizing a WeakMap makes sense here because when the `Request` object is the key, and the request finishes, it is gone when garbage collected by Node.js. The memory is automatically freed in this case. `singleCountKeys` overall prevents memory leaks and the validation logic ensures that a single HTTP request does not accidentally increment the rate limiter `hitCount` twice. 
+
+`const singleCountKeys = new WeakMap<Request, Map<Store | string, string[]>>()`
+
+The value `Map<Store | string, string[]>` is inside of `singleCountKeys` because we want to map a request to a standard map tracking the Store objects, and then the keys. Why? Because we want it so that way if a developer wants to use mutiple rate limiters in their project, we can safely account for each store for each request and increment as the developer intended. For instance, if we have a global limit of 100 requests per user, and a second specific limiter for only 5 login attempts. In this scenario, only the global limiter will increment and the login limiter will not; clearly resulting in an annoying bug.   
+
 
 ### Network Checks
 
