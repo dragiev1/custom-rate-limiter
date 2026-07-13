@@ -152,6 +152,13 @@ It is important that we do not cause the entire program to crash due to the rate
 
 ### Network Checks
 
-There are some network checks we must validate in order for our rate limiter to be safely utilized in a developer environment. One of which would be properly validating IP addresses; simple enough. But one thing that is most important to check is the `trust proxy` attribute in the request object. 
+There are some network checks we must validate in order for our rate limiter to be safely utilized in a developer environment. One of which would be properly validating IP addresses as real IP addresses; simple enough. But a few things that are most important to check is with the `trust proxy` attribute in the express `req` object. 
 
-The reason `trust proxy` must not be `true` is because this essentially allows clients to bypass the rate limiter altogether. Not ideal, so we must check that it is set to false by calling `app` from the Express request object and then use the `get` method to grab the `trust proxy` attribute for validation. 
+The `trust proxy` setting must not be `true` because this essentially allows clients to bypass the rate limiter altogether. Not ideal, as a hacker can spam various fake headers that store user IP addresses, all while using their real IP as the TCP IP, rendering our rate-limiter useless. 
+
+`trust proxy` must also not be `false` as this programmitally reads the express `req.ip` attribute as the TCP IP, when in reality we want the user's IP. This can rate-limit everyone in the worst case scenario!  
+
+So the solution to this is: 
+* `trust proxy = our trusted machine's TCP network IP`, not a generic boolean value. This allows us to only trust one proxy and if requests come from a random proxy, we ignore it and rate limit that proxy instead of the fake headers inside of it. Thus, we can safely rate limit **real** users and not fake ones spoofed by hackers.  
+
+

@@ -78,7 +78,7 @@ const validations = {
     if (req.headers['x-forwarded-for'] && req.app.get('trust proxy') === false)
       throw new ValidationError(
         'custom-rate-limiter: UNEXPECTED_X_FORWARDED_FOR',
-        `The 'X-Forwarded-For' header is set but Express 'trust proxy' setting is false by default. This is potentially caused by a misconfiguration in settings and can also prevent the rate limiter from accurately identifying users.`
+        `The 'X-Forwarded-For' header is set but Express 'trust proxy' setting is false by default. This is potentially caused by a misconfiguration in settings and can prevent the rate limiter from accurately identifying users.`
       )
   },
 
@@ -95,5 +95,5 @@ const validations = {
 
   /* Store and counting validations */
   
-  
+
 }
