@@ -113,9 +113,11 @@ export type Store = {
   //  Shutdown the store, stop timers, and release all resources
   shutdown?: () => Promise<void> | void
 
-  //  Flag to indicate keys incremented in one instance of a store object can not affect other instances.
+  //  Flag to indicate keys incremented in one instance of a store object can not affect other instances
   localKeys?: boolean
 
+  //  Optional prefix to append to keys to potentially avoid double counting
+  prefix?: string
 }
 
 //  Information related for rate limiting

@@ -85,15 +85,62 @@ const validations = {
 
   // Alert user if Forwarded header is set (standardized version of X-Forwarded-For)
   forwardedHeader(req: Request) {
-    if ( req.headers.forwarded && req.ip === req.socket?.remoteAddress) 
+    if (req.headers.forwarded && req.ip === req.socket?.remoteAddress) 
       throw new ValidationError(
         'custom-rate-limiter: FORWARDED_HEADER',
-        `The 'Forwarded' header (standardized X-Forwarded-For) is set but currently being ignored. Add a custom keyGen to use a value from this header.`
+        `The 'Forwarded' header (standardized X-Forwarded-For) is set but currently being ignored. Add a custom keyGen to use a value from this header.`,
       )
   },
 
 
-  /* Store and counting validations */
+  /* Store and counting validations. */
   
+  positiveHits(hits: any) {
+    if (typeof hits !== 'number' || hits < 1 || hits !== Math.round(hits))
+      throw new ValidationError(
+        'custom-rate-limiter: INVALID_HITS',
+        `The totalHits value from store must be a positive integer, returned ${hits}`,
+      )
+  },
+
+  // Ensures a single store instance is not used with multiple rate limit instances
+  unsharedStore(store: Store) {
+    if (usedStores.has(store)) {
+      const maybeUniquePrefix = store?.localKeys ? '' : ' (with unique prefix)'
+      throw new ValidationError(
+        'custom-rate-limiter: STORE_REUSE',
+        `A Store instance should not be shared across multiple rate limiters. Create a new instance of ${store.constructor.name}${maybeUniquePrefix}.`,
+      )
+    }
+    usedStores.add(store)
+  },
+
+  // Ensures a given key is incremented only once per request in a specific Store
+  singleCount(req: Request, store: Store, key: string) {
+    let storeKeys = singleCountKeys.get(req)
+
+    if(!storeKeys) {
+      storeKeys = new Map()
+      singleCountKeys.set(req, storeKeys)
+    }
+
+    const storeKey = store.localKeys ? store : store.constructor.name
+    let keys = storeKeys.get(storeKey)
+    if (!keys) {
+      keys = []
+      storeKeys.set(storeKey, keys)
+    }
+
+    const prefixedKey = `${store.prefix ?? ''}${key}`
+    if(keys.includes(prefixedKey)) {
+      throw new ValidationError(
+        'custom-rate-limiter: DOUBLE_COUNT',
+        `Hit count for ${key} was incremented more than once for a single request`,
+      )
+    }
+
+    keys.push(prefixedKey)
+  },
+
 
 }
