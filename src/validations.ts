@@ -143,4 +143,33 @@ const validations = {
   },
 
 
+  /* Configuration and deprecation warnings */
+
+  // Ensures the IETF draft version in config is supported 
+  headersDraftVersion(version?: any) {
+    if ( typeof version !== 'string' || !SUPPORTED_DRAFT_VERSIONS.includes(version) )
+      throw new ValidationError(
+        'custom-rate-limiter: HEADERS_UNSUPPORTED_DRAFT_VERSION',
+        `standardHears: only supported version of the IETF draft specification are as followed: ${
+          SUPPORTED_DRAFT_VERSIONS.join(', ')
+        }`
+      )
+  },
+
+
+  // Warns that the draft-7 required resetTime was not given and will default to using windowMs
+  headersResetTime(resetTime?: Date) {
+    if(!resetTime) 
+      throw new ValidationError(
+        'custom-rate-limiter: NO_RESET_TIME_HEADERS',
+        `standardHeaders: 'draft-7' requires a 'resetTime' header, but store was not provided one. 'windowMs' will be used instead, which may cause clients to wait longer than needed`
+      )
+  },
+
+
+  
+
+
+
+
 }
