@@ -96,14 +96,14 @@ const validations = {
   /* Store and counting validations. */
   
   positiveHits(hits: any) {
-    if (typeof hits !== 'number' || hits < 1 || hits !== Math.round(hits))
+    if (!Number.isInteger(hits) || hits < 1)
       throw new ValidationError(
         'custom-rate-limiter: INVALID_HITS',
         `The totalHits value from store must be a positive integer, returned ${hits}`,
       )
   },
 
-  // Ensures a single store instance is not used with multiple rate limit instances
+  // Ensures a single store instance is not used with multiple rate limit instances and prevents state bleeding
   unsharedStore(store: Store) {
     if (usedStores.has(store)) {
       const maybeUniquePrefix = store?.localKeys ? '' : ' (with unique prefix)'
@@ -115,7 +115,7 @@ const validations = {
     usedStores.add(store)
   },
 
-  // Ensures a given key is incremented only once per request in a specific Store
+  // Protects users from being penalized more than one times for a unique HTTP request
   singleCount(req: Request, store: Store, key: string) {
     let storeKeys = singleCountKeys.get(req)
 
