@@ -1,5 +1,6 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { SUPPORTED_DRAFT_VERSIONS } from './headers';
+import type { Validations } from './validations';
 
 // Logging function
 export type LoggerFn = (error: unknown, message?: string) => void;
@@ -17,6 +18,10 @@ export type ValueDeterminingMiddleware<T> = (
   req: Request,
   res: Response,
 ) => T | Promise<T>;
+
+export type EnabledValidations = {
+  [ key in keyof Omit<Validations, 'enabled' | 'disable'> | 'default']?: boolean
+}
 
 // Preferences for rate limiter
 export type Options = {
@@ -40,6 +45,7 @@ export type Options = {
   reqSuccessful: ValueDeterminingMiddleware<boolean>
   passOnStoreError: boolean  // If the store errors, allow the request
   store: Store  // The store used to store the hit count for every user
+  validate: boolean | EnabledValidations  //  
   logger: Logger
 
   /**
