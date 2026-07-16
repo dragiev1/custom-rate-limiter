@@ -1,4 +1,5 @@
 # Custom Rate Limiter in Express
+[![CI Pipeline](https://github.com/dragiev1/custom-rate-limiter/actions/workflows/ci.yml/badge.svg)](https://github.com/dragiev1/custom-rate-limiter/actions/workflows/ci.yml)
 
 A rate limiter will cap the amount of API requests to minimize resource usage and potentially block abusers utilizing said APIs. 
 
