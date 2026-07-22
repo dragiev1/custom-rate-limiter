@@ -68,3 +68,23 @@ describe('middleware test', () => {
   }
 })
 
+
+//  Store specifically for throwing errors
+class StoreThrowErrors implements Store {
+  init(_options: Options): void {}
+
+  async get(_key: string): Promise<ClientRateLimitInfo> {
+    throw new Error('Mock error!')
+  }
+
+  async inc(_key: string): Promise<ClientRateLimitInfo> {
+    throw new Error('Mock error!')
+  }
+
+  async dec(_key: string): Promise<void> {}
+
+  async resetKey(_key: string): Promise<void> {}
+
+  async resetAll(): Promise<void> {}
+}
+
