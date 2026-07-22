@@ -167,3 +167,50 @@ So the solution to this is:
 * `trust proxy = our trusted machine's TCP network IP`, not a generic boolean value. This allows us to only trust one proxy and if requests come from a random proxy, we ignore it and rate limit that proxy instead of the fake headers inside of it. Thus, we can safely rate limit **real** users and not fake ones spoofed by hackers.  
 
 
+
+## Testing
+
+Testing is absolutely a must when developing a rate limiter. There are many requirements we need to check off to ensure this package will do what it is intended to do. 
+
+A loaded question I had when learning about developing a rate limiter is: **what do we even check and how?**
+
+A few things I have learned that we need are: 
+
+* A Test Server: a helper file that essentially spins up a minimal Express app and applies the rate limiter, plus a simple test route. 
+
+* Be able to send HTTP requests to the app without needing a manual live server on a port.
+
+* Create a Mock Store: a class that implements the Store interface but stores data in a simple in memory JavaScript object or `Map`, ensuring the tests do not depend on external database connections.
+
+* Implement the fake timers to write tests that return various responses per request(s).
+
+* Verify the headers after each request and assert that the response headers are as expected
+
+* Lastly, error handling to deal with tests that pass invalid options or broken stores to the middleware and assert that it is throwing the appropriate error during initialization. 
+
+
+
+### What tool do we use? 
+
+At this point, we have a semi-advanced rate limiter! Although, one thing we want to do is test it, as we want to make sure it functions properly. But the question is: how? 
+
+There are plenty of tools to use in the Node.js ecosystem, some examples being `Mocha`, `Vitest`, `Ava`, and `Jest`. Which one is best for our needs, however? 
+
+Since our middleware revolves around a time interval, or "sliding window," which is a core component in our rate limiter, this tells us that we want to use a testing tool which has a built-in fake timer system. `Jest` has exactly that! 
+
+Jest allows us to *freeze* time, make requests, and instantly fast-forward the clock to simulate the expiration of a window with its `useFakeTimers()` object. In addition, we do not want to connect this to a real database just for testing purposes. As in a production environment, the `Store` could be a Redis or PostgreSQL database. This would be unnecessarily complicated and resource intensive. A solution is to use Jest's built-in mocking system to create a `MockStore` class, in which implements the `Store` interface and using a simple JavaScript `Map` or object. On top of that, Jest has "spying" capabilities that allow us to spy on methods to verify their intentional or unintentional behaviors. 
+
+It begins to be obvious why Jest is an industry standard for a standard testing framework. That is because it groups many nice tools (runner, assertions, spying, etc.) into one package. 
+
+### Information+
+
+To be specific, there are two types of tests we are making: **Integration** and **Unit** tests. 
+
+For anyone that is unaware or heard of them and does not know what these types of tests are, I will explain them briefly. 
+
+**Unit** tests, tests each module of a software separately and are responsible to observe only the functionality of these indiviudal *units*. These tests are performed first, as they involve the internal design of the software without external parts of the whole software; typically executed by the developer. 
+
+**Integration** tests verify all of the modules of the software combined. Contrary to unit tests, integration tests do not know the internal design of the software, it assumes it is law and checks if our code is *integrated* with the external dependencies to create an overall working system. These tests are executed by the tester and is performed *after* unit testing is complete. 
+
+Since integration tests do not know internal designs of interfaces, it is difficult to detect defects, hence why unit tests handle those types of verifications themselves. A common example of an external part is data integrity involving retrieving and storing data in a database, which is something that we will be doing!
+
