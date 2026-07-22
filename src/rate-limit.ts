@@ -48,7 +48,7 @@ type Configuration = {
 };
 
 //  IP rate limiter middleware
-const rateLimit = (passedOptions?: Options): RateLimitRequestHandler => {
+const rateLimit = (passedOptions?: Partial<Options>): RateLimitRequestHandler => {
   const config = parseOptions(passedOptions ?? {});
   const options = getOptionsFromConfig(config);
   
