@@ -49,13 +49,13 @@ const validations = {
   ip(ip: string | undefined) {
     if (ip === undefined)
       throw new ValidationError(
-        "custom-rate-limiter: UNDEFINED_IP_ADDRESS",
+        "CRL_ERR_UNDEFINED_IP_ADDRESS",
         `An undefined 'request.ip' was detected. This might indicate misconfigurations or the connection was prematurely severed.`,
       );
 
     if (!isIP(ip))
       throw new ValidationError(
-        "custom-rate-limiter: INVALID_IP_ADDRESS",
+        "CRL_ERR_INVALID_IP_ADDRESS",
         `An invalid 'request.ip' was detected (${ip}).`,
       );
   },
@@ -64,7 +64,7 @@ const validations = {
   trustProxy(req: Request) {
     if (req.app.get("trust proxy") === true)
       throw new ValidationError(
-        "custom-rate-limiter: PERMISSIVE_TRUST_PROXY",
+        "CRL_ERR_PERMISSIVE_TRUST_PROXY",
         `The Express 'trust proxy' setting is true, allowing anyone to bypass the rate limiter easily.`,
       );
   },
@@ -75,7 +75,7 @@ const validations = {
   xForwardedForHeader(req: Request) {
     if (req.headers["x-forwarded-for"] && req.app.get("trust proxy") === false)
       throw new ValidationError(
-        "custom-rate-limiter: UNEXPECTED_X_FORWARDED_FOR",
+        "CRL_ERR_UNEXPECTED_X_FORWARDED_FOR",
         `The 'X-Forwarded-For' header is set but Express 'trust proxy' setting is false by default. This is potentially caused by a misconfiguration in settings and can prevent the rate limiter from accurately identifying users.`,
       );
   },
@@ -84,7 +84,7 @@ const validations = {
   forwardedHeader(req: Request) {
     if (req.headers.forwarded && req.ip === req.socket?.remoteAddress)
       throw new ValidationError(
-        "custom-rate-limiter: FORWARDED_HEADER",
+        "CRL_ERR_FORWARDED_HEADER",
         `The 'Forwarded' header (standardized X-Forwarded-For) is set but currently being ignored. Add a custom keyGen to use a value from this header.`,
       );
   },
@@ -94,7 +94,7 @@ const validations = {
   positiveHits(hits: any) {
     if (!Number.isInteger(hits) || hits < 1)
       throw new ValidationError(
-        "custom-rate-limiter: INVALID_HITS",
+        "CRL_ERR_INVALID_HITS",
         `The totalHits value from store must be a positive integer, returned ${hits}.`,
       );
   },
@@ -104,7 +104,7 @@ const validations = {
     if (usedStores.has(store)) {
       const maybeUniquePrefix = store?.localKeys ? "" : " (with unique prefix)";
       throw new ValidationError(
-        "custom-rate-limiter: STORE_REUSE",
+        "CRL_ERR_STORE_REUSE",
         `A Store instance should not be shared across multiple rate limiters. Create a new instance of ${store.constructor.name}${maybeUniquePrefix}.`,
       );
     }
@@ -130,7 +130,7 @@ const validations = {
     const prefixedKey = `${store.prefix ?? ""}${key}`;
     if (keys.includes(prefixedKey)) {
       throw new ValidationError(
-        "custom-rate-limiter: DOUBLE_COUNT",
+        "CRL_ERR_DOUBLE_COUNT",
         `Hit count for ${key} was incremented more than once for a single request.`,
       );
     }
@@ -147,7 +147,7 @@ const validations = {
       !SUPPORTED_DRAFT_VERSIONS.includes(version)
     )
       throw new ValidationError(
-        "custom-rate-limiter: HEADERS_UNSUPPORTED_DRAFT_VERSION",
+        "CRL_ERR_HEADERS_UNSUPPORTED_DRAFT_VERSION",
         `standardHears: only supported version of the IETF draft specification are as followed: ${SUPPORTED_DRAFT_VERSIONS.join(
           ", ",
         )}.`,
@@ -158,7 +158,7 @@ const validations = {
   headersResetTime(resetTime?: Date) {
     if (!resetTime)
       throw new ValidationError(
-        "custom-rate-limiter: NO_RESET_TIME_HEADERS",
+        "CRL_ERR_NO_RESET_TIME_HEADERS",
         `standardHeaders: 'draft-7' requires a 'resetTime' header, but store was not provided one. 'windowMs' will be used instead, which may cause clients to wait longer than needed.`,
       );
   },
@@ -201,7 +201,7 @@ const validations = {
     for (const key of Object.keys(passedOptions))
       if (!validOptions.includes(key))
         throw new ValidationError(
-          "custom-rate-limiter: UNKNOWN_OPTION_IN_CONFIG",
+          "CRL_ERR_UNKNOWN_OPTION_IN_CONFIG",
           `Unexpected configuration options: ${key}.`,
         );
   },
@@ -214,7 +214,7 @@ const validations = {
     for (const key of Object.keys(this.enabled))
       if (!supportedValidations.includes(key))
         throw new ValidationError(
-          "custom-rate-limiter: UNKNOWN_VALIDATION",
+          "CRL_ERR_UNKNOWN_VALIDATION",
           `Unexpected option value '${key}' is not recognized. Supported validate options are: {${supportedValidations.join(", ")}}.`,
         );
   },
@@ -233,12 +233,12 @@ const validations = {
     ) {
       if (!store.localKeys)
         throw new ValidationError(
-          "custom-rate-limiter: CREATED_IN_REQUEST_HANDLER",
+          "CRL_ERR_CREATED_IN_REQUEST_HANDLER",
           `custom-rate-limiter instance should be created at app initialization, not when responding to a request.`,
         );
 
       throw new ValidationError(
-        "custom-rate-limiter: CREATED_IN_REQUEST_HANDLER",
+        "CRL_ERR_CREATED_IN_REQUEST_HANDLER",
         `custom-rate-limiter instance should be created at app initialization.`,
       );
     }
@@ -251,7 +251,7 @@ const validations = {
 
     if( !Number.isInteger(ipv6Subnet) || ipv6Subnet < 32 || ipv6Subnet > 64 ) 
       throw new ValidationError(
-        'custom-rate-limiter: IPV6_SUBNET',
+        'CRL_ERR_IPV6_SUBNET',
         `Unknown ipv6 subnet value: ${ipv6Subnet}. Expected an integer between 32 and 64.`
       )
   },
@@ -263,7 +263,7 @@ const validations = {
     const src = keyGen.toString()
     if ( (src.includes('req.ip') || src.includes('request.ip')) && !(src.includes('ipKeyGen') || src.includes('ipKeyGenerator'))) 
       throw new ValidationError(
-        'custom-rate-limiter: KEY_GEN_IPV6',
+        'CRL_ERR_KEY_GEN_IPV6',
         `Custom key generator seems to use request IP without calling the ipKeyGenerator helper function for IPv6 addresses. This could potentially allow exceeding rate limits.`
       )
   },
@@ -273,7 +273,7 @@ const validations = {
     const SET_TIMEOUT_MAX = 2 ** 31 - 1
     if ( typeof windowMs !== 'number' || Number.isNaN(windowMs) || windowMs < 1 || windowMs > SET_TIMEOUT_MAX )
       throw new ValidationError(
-        'custom-rate-limiter: WINDOW_MS',
+        'CRL_ERR_WINDOW_MS',
         `Invalid windowMs value: ${windowMs}${typeof windowMs !== 'number' ? ` (${typeof windowMs})`: ''}`
       ) 
   },

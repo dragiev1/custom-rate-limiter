@@ -163,7 +163,7 @@ describe("middleware test", () => {
       expect(logger.error).not.toHaveBeenCalled()  // Checks to see if any errors occurred
     })
     
-  
+    
     
   })
   
@@ -183,6 +183,7 @@ describe("middleware test", () => {
 
     /**
      * Tests if console threw an error because we told the library to use the custom logger
+     * Makes sure that developer uses our custom logger otherwise they will not get our errors/warnings
      */
     it('custom-rate-limiter/middleware.ts: should use logger instead of the console on validation errors', async () => {
       rateLimit({
