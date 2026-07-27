@@ -191,7 +191,6 @@ describe("middleware test", () => {
     })
   })
 
-  // TODO: finish tests below   
   it('custom-rate-limiter/middleware.ts: should let the first request through', async () => {
     const app = createServer(rateLimit({ limit: 1 }))
 
@@ -210,7 +209,20 @@ describe("middleware test", () => {
   })
 
   it('custom-rate-limiter/middleware.ts: should accept new connections from a limit blocked IP address', async () => {
+    const app = createServer(rateLimit({
+      limit: 2,
+      windowMs: 60,
+    }))
 
+    // Use up limit
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(200)
+    // Get limited
+    await request(app).get('/').expect(429)
+    // Skip 60 seconds into the future
+    jest.advanceTimersByTime(60)
+    // Should be able to make new request
+    await request(app).get('/').expect(200)
   })
 
 
