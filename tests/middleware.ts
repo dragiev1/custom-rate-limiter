@@ -192,14 +192,21 @@ describe("middleware test", () => {
   })
 
   // TODO: finish tests below   
-  it('custom-rate-limiter/middleware.ts: should let the first request through', () => {
+  it('custom-rate-limiter/middleware.ts: should let the first request through', async () => {
     const app = createServer(rateLimit({ limit: 1 }))
 
-    await request(app)
+    await request(app).get('/').expect(200).expect('Hello!')
   })
 
+  /**
+   * Main test for rate limiting logic
+   */
   it('custom-rate-limiter/middleware.ts: should refuse additional connections once IP has reached limit', async () => {
-    
+    const app = createServer(rateLimit({ limit: 2 }))
+
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(429)
   })
 
   it('custom-rate-limiter/middleware.ts: should accept new connections from a limit blocked IP address', async () => {
