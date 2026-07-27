@@ -146,6 +146,10 @@ describe("middleware test", () => {
       }
     }
   
+
+    /**
+     * Tests if the store initialized properly and that the limiter is not a Promise object
+     */
     it('custom-rate-limiter/middleware.ts: should handle resolving async init', async () => {
       // Arrange
       const store = new MockStoreAsyncInitResolving()
@@ -155,19 +159,47 @@ describe("middleware test", () => {
       })
   
       // Act
-      await new Promise((resolve) => process.nextTick(resolve))
+      await new Promise((resolve) => process.nextTick(resolve)) 
   
       // Assert
       expect(limiter).not.toBeInstanceOf(Promise)  // Makes sure rate limit is not a promise to avoid devs needing to use `await` when using limiter
-      expect(store.initWasCalled).toEqual(true)  // Makes sure store was initialized in the first place
+      expect(store.initWasCalled).toBe(true)  // Makes sure store was initialized in the first place
       expect(logger.error).not.toHaveBeenCalled()  // Checks to see if any errors occurred
     })
     
-    
+    /**
+     * Creates a mock implementation on fake store and tests if errors are properly thrown from the store
+     */
+    it('custom-rate-limiter/middleware.ts: should catch async errors thrown from store initialization method', () => {
+      const store = new MockStore()
+      jest.spyOn(store, 'init').mockImplementation(() => {
+        throw new Error('test error')
+      })
+      const limiter = rateLimit({
+        store,
+        logger,
+      })
+
+      expect(limiter).not.toBeInstanceOf(Promise)
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.any(Error),
+        'custom-rate-limiter: error during store initialization.',
+      )
+    })
+  })
+
+  // TODO: create a helper.ts file to help with this test  
+  it('custom-rate-limiter/middleware.ts: should let the first request through', () => {
+  })
+
+  it('custom-rate-limiter/middleware.ts: should refuse additional connections once IP has reached limit', async () => {
     
   })
-  
-  
+
+  it('custom-rate-limiter/middleware.ts: should accept new connections from a limit blocked IP address', async () => {
+
+  })
+
   describe('custom-rate-limiter/middleware.ts: logger set', () => {
     let logger: Logger
 
