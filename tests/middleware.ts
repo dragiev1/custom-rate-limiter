@@ -15,6 +15,7 @@ import {
   jest,
 } from "@jest/globals"
 import type { Request, Response, NextFunction } from "express"
+import { agent as request } from 'supertest'
 
 
 //  Starting point of middleware tests
@@ -194,7 +195,7 @@ describe("middleware test", () => {
   it('custom-rate-limiter/middleware.ts: should let the first request through', () => {
     const app = createServer(rateLimit({ limit: 1 }))
 
-    
+    await request(app)
   })
 
   it('custom-rate-limiter/middleware.ts: should refuse additional connections once IP has reached limit', async () => {
@@ -205,7 +206,7 @@ describe("middleware test", () => {
 
   })
 
-  
+
   describe('custom-rate-limiter/middleware.ts: logger set', () => {
     let logger: Logger
 
