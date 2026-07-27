@@ -1,4 +1,5 @@
 //  Tests the rate limiter
+import { createServer } from "../tests/create-server.ts"
 import rateLimit, {
   Logger,
   type ClientRateLimitInfo,
@@ -13,6 +14,7 @@ import {
   it,
   jest,
 } from "@jest/globals"
+import type { Request, Response, NextFunction } from "express"
 
 
 //  Starting point of middleware tests
@@ -188,8 +190,11 @@ describe("middleware test", () => {
     })
   })
 
-  // TODO: create a helper.ts file to help with this test  
+  // TODO: finish tests below   
   it('custom-rate-limiter/middleware.ts: should let the first request through', () => {
+    const app = createServer(rateLimit({ limit: 1 }))
+
+    
   })
 
   it('custom-rate-limiter/middleware.ts: should refuse additional connections once IP has reached limit', async () => {
@@ -200,6 +205,7 @@ describe("middleware test", () => {
 
   })
 
+  
   describe('custom-rate-limiter/middleware.ts: logger set', () => {
     let logger: Logger
 
