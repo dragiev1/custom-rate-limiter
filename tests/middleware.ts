@@ -170,7 +170,32 @@ describe("middleware test", () => {
   
   describe('custom-rate-limiter/middleware.ts: logger set', () => {
     let logger: Logger
+
+    beforeEach(() => {
+      logger = {
+        error: jest.fn(),
+        warn: jest.fn(),
+      }
+
+      jest.spyOn(console, 'error').mockImplementation(() => {})
+    })
+
+
+    /**
+     * Tests if console threw an error because we told the library to use the custom logger
+     */
+    it('custom-rate-limiter/middleware.ts: should use logger instead of the console on validation errors', async () => {
+      rateLimit({
+        logger,
+        ipv6Subnet: 48.5,
+      })
+
+      expect(console.error).not.toHaveBeenCalled()
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({code:'custom-rate-limiter: IPV6_SUBNET'}),
+      ) 
+    })
     
-    // TODO: Finish the rest of this section of tests regarding the logger.
+    
   })
 })
