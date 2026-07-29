@@ -1,7 +1,8 @@
 import createApp, {type Application, type Request, type RequestHandler, type Response } from "express";
 
 /**
- * An Express server given middleware
+ * An Express server given middleware to test for a multitude of different objects.
+ * Ex: rateLimit, Logger, etc. 
  */
 export const createServer = (
   middleware: RequestHandler | RequestHandler[],
@@ -18,6 +19,7 @@ export const createServer = (
     res.sendStatus(400)
   })
 
+  // Intentially simulate a server failure or an aborted connection
   app.post('/crash', (_req: Request, res: Response) => {
     const err = new Error('Uh oh...')
     res.destroy(err)

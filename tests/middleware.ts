@@ -211,7 +211,7 @@ describe("middleware test", () => {
   it('custom-rate-limiter/middleware.ts: should accept new connections from a limit blocked IP address', async () => {
     const app = createServer(rateLimit({
       limit: 2,
-      windowMs: 60,
+      windowMs: 30,
     }))
 
     // Use up limit
@@ -220,10 +220,99 @@ describe("middleware test", () => {
     // Get limited
     await request(app).get('/').expect(429)
     // Skip 60 seconds into the future
-    jest.advanceTimersByTime(60)
+    jest.advanceTimersByTime(30)
     // Should be able to make new request
     await request(app).get('/').expect(200)
   })
+
+  it('custom-rate-limiter/middleware.ts: should work consecutively', async () => {
+    const app = createServer(rateLimit({ 
+      limit: 2,
+      windowMs: 30,
+    }))
+
+    // Use up limit
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(429)
+
+    jest.advanceTimersByTime(30)
+
+    // Should be rate limited again after reset
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(429)
+    
+    jest.advanceTimersByTime(30)
+    await request(app).get('/').expect(200)
+  })
+
+  it('custom-rate-limiter/middleware.ts: should block all requests if limit is set to 0', async () => {
+    const app = createServer(rateLimit({ 
+      validate: { limit: false }, 
+      limit: 0, 
+    }))
+
+    await request(app).get('/').expect(429)
+  })
+
+  it('custom-rate-limiter/middleware.ts: should show the provided msg instead of the default msg when limit rates are reached', async () => {
+    const msg = 'LIMITED, HAHA'
+    const app = createServer(rateLimit({
+      limit: 2,
+      windowMs: 40,
+      message: msg,
+    }))
+
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(429).expect(msg)
+  })
+
+  it('custom-rate-limiter/middleware.ts: should allow user to customize error status codes', async () => {
+    const statusCode = 448
+    const app = createServer(rateLimit({
+      limit: 1,
+      windowMs: 20,
+      statusCode,
+    }))
+
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(429).expect(statusCode)
+  })
+
+  it('custom-rate-limiter/middleware.ts: should allow responding with a JSON msg', async () => {
+    const msg = { error: { code: 'too-many-request', message: 'Too many requests were attempted at once.', }}
+    const app = createServer(rateLimit({
+      limit: 1,
+      message: msg
+    }))
+
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(429, msg)
+  })
+
+  it('custom-rate-limiter/middleware.ts: should allow a message be a function', async () => {
+    const app = createServer(rateLimit({
+      limit: 1,
+      message: () => 'Too many requests.',
+    }))
+
+    await request(app).get('/').expect(200, 'Hello!')
+    await request(app).get('/').expect(429, 'Too many requests.')
+  })
+
+  it('custom-rate-limiter/middlware.ts: should allow msg to be a function that returns a promsie', async () => {
+    const app = createServer(rateLimit({
+      limit: 1,
+      message: async () => 'Too many requests.'
+    }))
+
+    await request(app).get('/').expect(200, 'Hello!')
+    await request(app).get('/').expect(429, 'Too many requests.')
+  })
+
+  it('', async () => {})
 
 
   describe('custom-rate-limiter/middleware.ts: logger set', () => {

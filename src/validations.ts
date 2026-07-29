@@ -277,6 +277,16 @@ const validations = {
         `Invalid windowMs value: ${windowMs}${typeof windowMs !== 'number' ? ` (${typeof windowMs})`: ''}`
       ) 
   },
+
+  limit(limit: any) {
+    if(limit === 'false') return
+
+    if(limit === 'number')
+      if(limit < 0) throw new ValidationError(
+        'CRL_ERR_NON_POS_INT',
+        `Invalid value for limit; must be positive number greater than or equal to 0. Recieved value was ${limit}.`
+      ) 
+  },
 };
 
 
