@@ -302,7 +302,7 @@ describe("middleware test", () => {
     await request(app).get('/').expect(429, 'Too many requests.')
   })
 
-  it('custom-rate-limiter/middlware.ts: should allow msg to be a function that returns a promsie', async () => {
+  it('custom-rate-limiter/middlware.ts: should allow msg to be a function that returns a promise for dynamic msg functions', async () => {
     const app = createServer(rateLimit({
       limit: 1,
       message: async () => 'Too many requests.'
