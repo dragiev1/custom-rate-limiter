@@ -1,5 +1,6 @@
 //  Tests the rate limiter
 import { createServer } from "../tests/create-server.ts"
+import HTTP from 'node:http'
 import rateLimit, {
   Logger,
   type ClientRateLimitInfo,
@@ -16,6 +17,7 @@ import {
 } from "@jest/globals"
 import type { Request, Response, NextFunction } from "express"
 import { agent as request } from 'supertest'
+import { AddressInfo } from "node:net"
 
 
 //  Starting point of middleware tests
@@ -570,8 +572,61 @@ describe("middleware test", () => {
       store,
     }))
 
-    
+
+    let recieved: () => void
+    const connectionOpened = new Promise<void>((resolve) => {
+      recieved = resolve
+    })
+    let closed: () => void
+    const connectionClosed = new Promise<void>((resolve) => {
+      closed = resolve
+    })
+
+    app.get('/hang-server', (req, _res) => {
+      recieved()
+      req.on('close', closed)
+    })
+
+    // Creating an actual HTTP server request here due to Node.js .timeout() not working here anymore
+
+    let setListening: () => void
+    const listening = new Promise<void>((resolve) => {
+      setListening = resolve
+    })
+    const listener = app.listen((err) => {
+      if(err) {
+        console.error('Error starting the server:', err)
+        throw err
+      }
+      setListening()
+    })
+    listener.unref()  // Do not let the procress exit if the test fails
+    await listening
+
+    const { address, port } = listener.address() as AddressInfo
+    expect(address).toBeDefined()
+    expect(port).toBeDefined
+
+    const responseHandler = jest.fn()
+    const hangRequest = HTTP.get(
+      `http://[${address}]:${port}/hang-server`,
+      responseHandler,
+    )
+
+    await connectionOpened
+
+    hangRequest.on('error', (_err) => {
+      // expected, but if we do not add a listener, the test fails
+    })
+    hangRequest.destroy()
+
+    await connectionClosed
+    listener.close()  // Shutdown server
+
+    expect(store.decrementWasCalled).toEqual(true)
+    expect(responseHandler).not.toHaveBeenCalled()  // This means server responded to something going wrong
   })
+
 
   it('', async () => {
 
