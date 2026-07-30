@@ -563,7 +563,7 @@ describe("middleware test", () => {
     expect(store.decrementWasCalled).toEqual(true)
   })
 
-  // TODO:
+  // Tests to see if the middleware prevents penalizations of when users disconnect abruptly on accident
   it('should `decrement` hits when response closes and `skipFailedRequests` is true', async () => {
     jest.useRealTimers()
     const store = new MockStore()
