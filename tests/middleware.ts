@@ -360,6 +360,223 @@ describe("middleware test", () => {
     await request(app).get('/').expect(200)
   })
 
+  // Note: default headers are following draft-6
+  it('should calculate how many hits are left', async () => {
+    const app = createServer(rateLimit({ limit: 2 }))
+
+    await request(app)
+      .get('/')
+      .expect(200)
+      .expect('rate-limit', '2')
+      .expect('rate-remaining', '1')
+      .expect((res) => {
+        if('retry-after' in res.headers) 
+          throw new Error(
+            `Expected no retry-after header, got ${res.headers['retry-after']}.`,
+          )
+      })
+  })
+
+  it('should call `increment` with the store', async () => {
+    const store = new MockStore()
+    const app = createServer(rateLimit({ store }))
+    await request(app).get('/')
+    expect(store.incrementWasCalled).toEqual(true)
+  })
+
+  it('should call `resetKey` with the store', async () => {
+    const store = new MockStore()
+    const limiter = rateLimit({
+      store,
+    })
+    limiter.resetKey('key')
+    expect(store.resetKeyWasCalled).toEqual(true)
+  })
+
+  it('should call `get` on the store', async () => {
+    const store = new MockStore()
+    const limiter = rateLimit({ store })
+    
+    const res = await limiter.getKey('key')
+
+    expect(store.getWasCalled).toEqual(true)
+    expect(typeof res?.totalHits).toBe('number')
+  })
+
+  it('should throw error if `get` does not exist on the store', async () => {
+    const store = new MockStore()
+    const limiter = rateLimit({ store })
+
+    expect(limiter.getKey).toThrow()
+  })
+
+  // Ex: login attempts. If successful, then don't count it because there is no need
+  it('should `decrement` when requests succeed and `skipSuccessfulRequests` is true', async () => {
+    const store = new MockStore()
+    const app = createServer(rateLimit({ 
+      skipSuccessfulRequests: true,
+      store,
+    }))
+
+    await request(app).get('/'),expect(200)
+    expect(store.decrementWasCalled).toEqual(true)
+  })
+
+  // Store should catch the 200 response and immediately decrement the hit since skipping the successful requests setting is on
+  it('should `decrement` hits when request finishes before `resetTime` with `skipSuccessfulRequests', async () => {
+    const store = new MockStore()
+    const app = createServer([
+      rateLimit({
+        skipSuccessfulRequests: true,
+        limit: 2,
+        windowMs: 300,
+        store,
+      }),
+      (req_, res_, next) => {
+        setTimeout(next, 15),
+        jest.runAllTimers()
+      },
+    ])
+
+    await request(app).get('/').expect(200)
+    expect(store.decrementWasCalled).toEqual(true)
+  })
+
+  /* Skip successful requests tests */
+
+  it('should not `decrement` hits when requests finishes after `resetTime` with `skipSuccessfulRequests', async () => {
+    const store = new MockStore()
+    const app = createServer([
+      rateLimit({
+        windowMs: 600,
+        store,
+        skipSuccessfulRequests: true,
+      }),
+      (_req, _res, next) => {
+        setTimeout(next, 620)
+        jest.runAllTimers()
+      },
+    ])
+
+    await request(app).get('/').expect(200)
+    expect(store.decrementWasCalled).toEqual(false)
+  })
+
+  it('should not `decrement` hits when requests fail and `skipSuccessfulRequests` is true', async () => {
+    const store = new MockStore()
+    const app = createServer(rateLimit({
+      windowMs: 250,
+      store,
+      skipSuccessfulRequests: true,
+    }))
+
+    await request(app).get('/error').expect(400)
+    expect(store.decrementWasCalled).toEqual(false)
+  })
+
+  it('should `decrement` hits when requests succeed, `skipSuccessfulRequests` is true and custom `requestWasSuccessful` method is used', async () => {
+    const store = new MockStore()
+    const app = createServer(rateLimit({
+      limit: 3,
+      windowMs: 40,
+      skipSuccessfulRequests: true,
+      reqSuccessful: (_req, res) => res.statusCode === 200,
+    }))
+
+    await request(app).get('/').expect(200)
+    expect(store.decrementWasCalled).toEqual(true)
+  })
+
+
+  it('should not `decrement` hits when requests fail, `skipSuccessfulRequests` is true, and custom `requestWasSuccessful` method is used', async () => {
+    const store = new MockStore()
+    const app = createServer(rateLimit({
+      skipSuccessfulRequests: true,
+      reqSuccessful: (_req, res) => res.statusCode === 200,
+      store,
+    }))
+
+    await request(app).get('/error').expect(400)
+    expect(store.decrementWasCalled).toEqual(false)
+  })
+
+  it('should `decrement` hits when requests succeed, `skipSuccessfulRequests` is true, and custom `reqSuccessful` is used', async () => {
+    const store = new MockStore()
+    const app = createServer(rateLimit({
+      skipSuccessfulRequests: true,
+      reqSuccessful: (req, _res) => req.query.success === '1',
+      store,
+    }))
+
+    await request(app).get('/?success=1')
+    expect(store.decrementWasCalled).toEqual(true)
+  })
+
+  it('should not `decrement` hits when requests fail, `skipSuccessfulRequests` is true, and custom `reqSuccessful` is used', async () => {
+    const store = new MockStore()
+    const app = createServer(rateLimit({
+      skipSuccessfulRequests: true,
+      reqSuccessful: (req, _res) => req.query.success === '1',
+      store, 
+    }))
+
+    await request(app).get('/?success=0')
+    expect(store.decrementWasCalled).toEqual(false)
+  })
+
+
+  /* Skip failed requests tests */
+
+  it('should `decrement` hits when requests fail, `skipFailedRequests` is set to true', async () => {
+    const store = new MockStore()
+    const app = createServer(rateLimit({
+      skipFailedRequests: true,
+      store,
+    }))
+
+    await request(app).get('/error').expect(400)
+    expect(store.decrementWasCalled).toEqual(true)
+  })
+
+  it('should not `decrement` hits requests succeed, `skipFailedRequests` is set to true', async () => {
+    const store = new MockStore()
+    const app = createServer(rateLimit({
+      skipFailedRequests: true,
+      store,
+    }))
+
+    await request(app).get('/').expect(200)
+    expect(store.decrementWasCalled).toEqual(false)
+  })
+
+  it('should `decrement` hits requests fail, `skipFailedRequests` is set to true, and custom `reqSuccessful` is used', async () => {
+    const store = new MockStore()
+    const app = createServer(rateLimit({
+      skipFailedRequests: true,
+      reqSuccessful: async () => false,
+      store,
+    }))
+
+    await request(app).get('/error').expect(400)
+    expect(store.decrementWasCalled).toEqual(true)
+  })
+
+  // TODO:
+  it('should `decrement` hits when response closes and `skipFailedRequests` is true', async () => {
+    jest.useRealTimers()
+    const store = new MockStore()
+    const app = createServer(rateLimit({
+      skipFailedRequests: true,
+      store,
+    }))
+
+    
+  })
+
+  it('', async () => {
+
+  })
+
 
   describe('logger set', () => {
     let logger: Logger

@@ -183,7 +183,7 @@ const rateLimit = (passedOptions?: Partial<Options>): RateLimitRequestHandler =>
         }
       };
 
-      //  TODO: Change to switch case maybe?
+      
       if (config.skipFailedRequests) {
         if (endOfPromise)
           void endOfPromise
