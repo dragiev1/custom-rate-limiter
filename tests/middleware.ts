@@ -1,4 +1,4 @@
-//  Tests the rate limiter
+//  Integration/Unit tests for the rate limiter
 import { createServer } from "../tests/create-server.ts"
 import HTTP from 'node:http'
 import rateLimit, {
@@ -563,7 +563,24 @@ describe("middleware test", () => {
     expect(store.decrementWasCalled).toEqual(true)
   })
 
-  // Tests to see if the middleware prevents penalizations of when users disconnect abruptly on accident
+  /**
+   * Tests to see if the middleware prevents penalizations of when users disconnect abruptly on accident.
+   * In English what is happening here:
+   * Creates an express app with rate limiter + real clock.
+   * Start server and listen to random port, await listening to pause test until server is fully booted.
+   * Use `HTTP.get` to send a request to /hang-server.
+   * Server catches request and fire `recieved` function; resolving `connectionOpened` Promise.
+   * `connectionOpened` resolves.
+   * Server does nothing.
+   * `hangRequest.destroy()` called to simulate user closing their browser mid-request.
+   * Node.js request object realizes socket is dead, then fire close event, triggering `closed()`; resolving `connectionClosed` Promise.
+   * Test unpauses past `await connectionClosed`.
+   * Shut down server.
+   * Assert:
+   *      Store decremented hit count.
+   *      HTTP response was sent by server and `responseHandler` (error) was not called.
+   * End of test.
+   */
   it('should `decrement` hits when response closes and `skipFailedRequests` is true', async () => {
     jest.useRealTimers()
     const store = new MockStore()
@@ -572,7 +589,7 @@ describe("middleware test", () => {
       store,
     }))
 
-
+    //  Deferred promise pattern
     let recieved: () => void
     const connectionOpened = new Promise<void>((resolve) => {
       recieved = resolve
@@ -584,11 +601,11 @@ describe("middleware test", () => {
 
     app.get('/hang-server', (req, _res) => {
       recieved()
+      // When request closes, call closed
       req.on('close', closed)
     })
 
     // Creating an actual HTTP server request here due to Node.js .timeout() not working here anymore
-
     let setListening: () => void
     const listening = new Promise<void>((resolve) => {
       setListening = resolve
@@ -600,7 +617,7 @@ describe("middleware test", () => {
       }
       setListening()
     })
-    listener.unref()  // Do not let the procress exit if the test fails
+    listener.unref()  //  Let the procress exit if the test fails
     await listening
 
     const { address, port } = listener.address() as AddressInfo
@@ -616,7 +633,7 @@ describe("middleware test", () => {
     await connectionOpened
 
     hangRequest.on('error', (_err) => {
-      // expected, but if we do not add a listener, the test fails
+      // Expected, but if we do not add a listener, the test errors out
     })
     hangRequest.destroy()
 
@@ -624,7 +641,7 @@ describe("middleware test", () => {
     listener.close()  // Shutdown server
 
     expect(store.decrementWasCalled).toEqual(true)
-    expect(responseHandler).not.toHaveBeenCalled()  // This means server responded to something going wrong
+    expect(responseHandler).not.toHaveBeenCalled()  // True means server responded to something going wrong
   })
 
 
