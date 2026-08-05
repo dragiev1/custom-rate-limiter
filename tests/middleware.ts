@@ -18,6 +18,7 @@ import {
 import type { Request, Response, NextFunction } from "express"
 import { agent as request } from 'supertest'
 import { AddressInfo } from "node:net"
+import { EventEmitter } from "node:stream"
 
 
 //  Starting point of middleware tests
@@ -581,7 +582,7 @@ describe("middleware test", () => {
    *      HTTP response was sent by server and `responseHandler` (error) was not called.
    * End of test.
    */
-  it('should `decrement` hits when response closes and `skipFailedRequests` is true', async () => {
+  it('should `decrement` hits when response closes and `skipFailedRequests` is true (server)', async () => {
     jest.useRealTimers()
     const store = new MockStore()
     const app = createServer(rateLimit({
@@ -645,8 +646,71 @@ describe("middleware test", () => {
   })
 
 
-  it('', async () => {
+  // Unit test for when a response closed abruptly to simulate a user losing connection
+  it('should `decrement` hits when response closes and `skipFailedRequests` is true (middleware)', async () => {
+    const store = new MockStore()
+    const middleware = rateLimit({
+      skipFailedRequests: true,
+      store,
+    })
 
+    const mockedReq = {
+      ip: '127.0.0.1',
+      method: 'GET',
+      path: '/',
+      url: '/',
+      headers: {},
+      app: { get: () => false},
+    } as unknown as Request  //  Avoid pointless attributes required in a Request object
+
+    const mockedRes = Object.assign(new EventEmitter(), {
+      statusCode: 200,
+      writableEnded: false,  //  This means the response never fully made it to client
+      setHeader: jest.fn(),
+      getHeader: jest.fn(),
+      end: jest.fn(),
+    }) as unknown as Response  //  Avoid pointless attributes required in a Response object
+
+    const next = jest.fn()
+
+    // Start middleware to wait for it to finish setting up
+    const middlewarePromise = middleware(mockedReq, mockedRes, next)
+
+    // Simulate the connection closing before the response finishes
+    mockedRes.emit('close')
+
+    // Wait for the middleware to finish processing
+    await middlewarePromise
+
+    expect(store.decrementWasCalled).toEqual(true)
+  })
+
+
+  it('should `decrement` hits when response emits an error and `skipFailedRequests` is true', async () => {
+    const store = new MockStore()
+    const app = createServer(rateLimit({
+      skipFailedRequests: true,
+      store,
+    }))
+
+    await app.get('/crash')
+
+    expect(store.decrementWasCalled).toEqual(true)
+  })
+
+  it('should `decrement` hits when limit is reached and `skipFailedRequests` is true', async () => {
+    const store = new MockStore()
+    const app = createServer(rateLimit({
+      limit: 2,
+      skipFailedRequests: true,
+      store,
+    }))
+
+    await app.get('/').expect(200)
+    await app.get('/').expect(200)
+    await app.get('/').expect(429)
+
+    expect(store.decrementWasCalled).toEqual(true)
   })
 
 
