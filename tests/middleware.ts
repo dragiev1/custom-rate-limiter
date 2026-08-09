@@ -714,6 +714,44 @@ describe("middleware test", () => {
   })
 
 
+  // Handler tests
+
+  it('should forward errors in the handler using `next()`', async () => {
+    let errorCaught = false
+    
+    const store = new MockStore()
+    const app = createServer(rateLimit({
+      store,
+      limit: 1,
+      handler() {
+        const exception = new Error('420: Mock Error')
+        throw exception
+      },
+    }))
+
+    // Creates an express app 
+    app.use((
+      error: Error,
+      _req: Request,
+      res: Response,
+      _next: NextFunction,
+    ) => {
+      errorCaught = true
+      res.status(500).send(error.message)
+    })
+
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(500)
+
+    expect(errorCaught).toEqual(true)
+  })
+
+
+  it('should pass the number of hits and the limit to the next request handler in the `request.rateLimit` property', async () => {
+    
+  })
+
+
   describe('logger set', () => {
     let logger: Logger
 
