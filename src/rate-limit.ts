@@ -71,6 +71,7 @@ const rateLimit = (passedOptions?: Partial<Options>): RateLimitRequestHandler =>
     }
   }
 
+  // Middleware setup
   const middleware = async (
     req: Request,
     res: Response,

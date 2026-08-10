@@ -19,6 +19,7 @@ import type { Request, Response, NextFunction } from "express"
 import { agent as request } from 'supertest'
 import { AddressInfo } from "node:net"
 import { EventEmitter } from "node:stream"
+import expectCookies from "supertest/lib/cookies"
 
 
 //  Starting point of middleware tests
@@ -729,7 +730,7 @@ describe("middleware test", () => {
       },
     }))
 
-    // Creates an express app 
+    // Only will run if Express recieves an error
     app.use((
       error: Error,
       _req: Request,
@@ -748,8 +749,125 @@ describe("middleware test", () => {
 
 
   it('should pass the number of hits and the limit to the next request handler in the `request.rateLimit` property', async () => {
-    
+    let savedRequestObject: any
+    const saveRequestObject = (
+      req: Request,
+      _res: Response,
+      next: NextFunction,
+    ) => {
+      savedRequestObject = req
+      next()
+    }
+
+    const app = createServer([
+      saveRequestObject,
+      rateLimit({
+        legacyHeaders: false,
+        limit: 6,
+      })
+    ])
+
+    await request(app).get('/').expect(200)
+    expect(savedRequestObject?.rateLimit).toMatchObject({
+      limit: 6,
+      used: 1,
+      remaining: 5,
+      resetTime: expect.any(Date),
+    })
+
+    expect(savedRequestObject?.rateLimit.current).toBe(1)
+
+    savedRequestObject = undefined  // Remove old request object for new one
+    await request(app).get('/').expect(200)
+    expect(savedRequestObject?.rateLimit).toMatchObject({
+      limit: 6,
+      used: 2,
+      remaining: 4,
+      resetTime: expect.any(Date),
+    })
+    expect(savedRequestObject?.rateLimit.current).toBe(2)
   })
+
+
+  it('should handle two rate-limiters with different `requestPropertyName` working independently', async () => {
+    const keyLimiter = rateLimit({
+      limit: 2,
+      requestPropertyName: 'rateLimitKey',
+      keyGen: (req) => req.query.key as string,
+      handler(_req, res) {
+        res.status(420).end('Test')
+      },
+    })
+
+    const globalLimiter = rateLimit({
+      limit: 5,
+      requestPropertyName: 'rateLimitGlobal',
+      keyGen: () => 'global',
+      handler(_req, res) {
+        res.status(429).end('Too many requests')
+      }
+    })
+
+    let savedRequestObj: any
+    const saveRequestObject = (
+      req: Request,
+      _res: Response,
+      next: NextFunction,
+    ) => {
+      savedRequestObj = req
+      next()
+    }
+
+    // Create the mock server with all the limiters plus the request tracker
+    const app = createServer([saveRequestObject, keyLimiter, globalLimiter])
+
+    await request(app).get('/').query({ key: 1 }).expect(200)
+
+    expect(savedRequestObj).toBeTruthy()
+    // Check if the library did not already use the default property name
+    expect(savedRequestObj.rateLimit).toBeUndefined()
+
+    // Key 
+    expect(savedRequestObj.rateLimitKey).toBeTruthy()
+    expect(savedRequestObj.rateLimitkey.limit).toEqual(2)
+    expect(savedRequestObj.rateLimitkey.remaining).toEqual(1)
+
+    // Global
+    expect(savedRequestObj.rateLimitGlobal).toBeTruthy()
+    expect(savedRequestObj.rateLimitGlobal.limit).toEqual(5)
+    expect(savedRequestObj.rateLimitGlobal.remaining).toEqual(4)
+    
+
+    savedRequestObj = undefined 
+    await request(app).get('/').query({ key: 2 }).expect(200)  // Query as new user
+    expect(savedRequestObj.rateLimitKey.remaining).toEqual(1)  // Make sure key limiter is different than key = 1
+    expect(savedRequestObj.rateLimitGlobal.remaining).toEqual(3)  // Make sure global limiter is still decrementing
+
+    
+    savedRequestObj = undefined
+    await request(app).get('/').query({ key: 1 }).expect(200)
+    expect(savedRequestObj.rateLimitKey.remaining).toEqual(0)
+    expect(savedRequestObj.rateLimitGlobal.remaining).toEqual(2)
+
+    savedRequestObj = undefined
+    await request(app).get('/').query({ key: 2 }).expect(200)
+    expect(savedRequestObj.rateLimitKey.remaining).toEqual(0)
+    expect(savedRequestObj.rateLimitGlobal.remaining).toEqual(1)
+
+    savedRequestObj = undefined
+    await request(app).get('/').query({ key: 1 }).expect(420, 'Too many requests')  // Check if global limiter limited the request!
+    expect(savedRequestObj.rateLimitKey.remaining).toEqual(0)
+
+    savedRequestObj = undefined
+    await request(app).get('/').query({ key: 3 }).expect(420, 'Too many requests')
+    expect(savedRequestObj.rateLimitKey.remaining).toEqual(0)
+    expect(savedRequestObj.rateLimitGlobal.remaining).toEqual(0)
+
+    savedRequestObj = undefined
+  })
+
+
+  it('', async () => {})
 
 
   describe('logger set', () => {
