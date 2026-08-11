@@ -1,9 +1,9 @@
 //  Export everything!
 
-export { ipKeyGen } from './ip-key-gen.ts'
+export { ipKeyGen } from './ip-key-gen'
 
-export { MemoryStore } from './memory-store.ts'
+export { MemoryStore } from './memory-store'
 
-export { default, default as rateLimit } from './rate-limit.ts'
+export { default, default as rateLimit } from './rate-limit'
 
-export * from './types.ts'
+export * from './types'

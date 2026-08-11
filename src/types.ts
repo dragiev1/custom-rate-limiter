@@ -26,13 +26,13 @@ export type EnabledValidations = {
 // Preferences for rate limiter
 export type Options = {
   windowMs: number  // How long to remember requests
-  limit: number  // Max requests before limiting client, defaults to 5
+  limit: number | ValueDeterminingMiddleware<number>, // Max requests before limiting client, defaults to 5
   message: any  
   statusCode: number  // HTTP status code to send back when a client is rate limited
   requestPropertyName: string
 
   legacyHeaders: boolean  //  Whether to use "X-Rate..." old headers
-  //  Support standardized headers (defaults to false)
+  //  Support standardized headers (defaults to true)
   standardHeaders: boolean | DraftHeadersVersion 
   //  8th draft specification for the name used to identify the quota policy in headers
   identifier: string | ValueDeterminingMiddleware<string>  

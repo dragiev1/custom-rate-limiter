@@ -263,7 +263,7 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
 
   const logger = passedOptions.logger ?? ConsoleLogger;
 
-  let standardHeaders = definedOptions.standardHeaders ?? false;
+  let standardHeaders = definedOptions.standardHeaders ?? true; // Use standard headers as default
   if (standardHeaders === true) standardHeaders = "draft-6"; // Default to draft-6
 
   const config: Configuration = {
@@ -272,7 +272,7 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
     message: "Too many request, please try again later.",
     statusCode: 429,
     requestPropertyName: "rateLimit",
-    legacyHeaders: definedOptions.legacyHeaders ?? true,
+    legacyHeaders: definedOptions.legacyHeaders ?? false,
 
     skipFailedRequests: false,
     skipSuccessfulRequests: false,
