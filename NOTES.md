@@ -73,7 +73,7 @@ The rate limiter will have different "leniency" settings based on aggressive we 
 Well, it means how many digits we are going to use to generalize the IPv6. Using the `64` mask as an example, that means we will only look at the first 64 bits of the IPv6 string. In this case, that's the first half of the address, or what we know it as the network prefix. Doing this can allow us to avoid a bot from being able to change their IPv6 address by one digit or sometimes an entirely different one. Like this: 
 - Request 1: (`2001:0db8:85a3:0000:1111:2222:3333:4444`)
 - Request 2: (`2001:0db8:85a3:0000:1111:2222:3333:4447`)
-- Request 3: (`2001:0db8:85a3:0000:aaaa:bbbb:cccc:dddd`) (completely different local interface identifier)
+- Request 3: (`2001:0db8:85a3:0000:aaaa:bbbb:cccc:dddd`) (entirely different local interface identifier)
 
 This is how we can avoid, somewhat sophisticated, bots trying to overcome our rate limiter. We intentionally ignore the interface identifier with the `64` block setting, so we only add to the hit count if we see `2001:0db8:85a3:0000` and not the entire address. Now it's understandable that `32` is very harsh because it sees only 32 bits of the address or `2001:0db8`. This is why it can potentially block innocent users that did not need to be rate limited. The default setting we will use in the rate limiter will be the `56` bits. 
 
@@ -167,6 +167,43 @@ So the solution to this is:
 * `trust proxy = our trusted machine's TCP network IP`, not a generic boolean value. This allows us to only trust one proxy and if requests come from a random proxy, we ignore it and rate limit that proxy instead of the fake headers inside of it. Thus, we can safely rate limit **real** users and not fake ones spoofed by hackers.  
 
 
+## Configurations
+
+I want to go over all the types of configurations to be possible in this rate limiter. 
+* `windowMs`: The time interval in which the rate limiter will look at to track user hit frequency. If there are 5 hits found from a specific user in this window, and the limit is set to 5, the rate limiter with then block any further hits from that user. 
+* `limit`: Max amount of requests allowed per user within the time interval set.
+* `message`: A message to add for users to know they have been rate limited.
+* `statusCode`: HTTP status code to send back when a client has been rate limited.
+* `legacyHeaders`: A boolean used to toggle the use of old style headers (X-RateLimit-Y).
+* `standardHeaders`: Support for standardized headers (defaults to false).
+* `requestPropertyName`: Specific name for accessing per-request metadata (`request.**rateLimiterName** = ...`)
+* `identifier`: 8th draft specification for the name used to identify the quota policy in headers. 
+* `skipFailedRequests`: Boolean to either skip a user's hit based on any error causing the request to fail or not go through. 
+* `skipSuccessfulRequests`: Boolean to skip a user's hit if the request was successful.
+* `skip`: Boolean to use for more complex needs to rate specific users on specific things. 
+* `keyGen`: An optional key generator for creating more complex identifying keys for limiting users with the IPv6 addresses (nondefault).
+* `handler`: A handler used for sending back a response to user stating they are rate limited. 
+* `reqSuccessful`: Boolean stating whether a request was successful or not.
+* `passOnStoreError`: Useful boolean to allow a user to make a further requests if the ability to store information on the rate limiter is either broken or down. 
+* `store`: The datastructure or specific database used to store user's IPs, their hit counts, and other necessary data.
+* `validate`: Boolean used to allow validation of data and objects as they come in and out.
+* `logger`: Custom logger for processing/displaying errors and warning to the server console.
+* `ipv6Subnet`: Subnet mask settings for rate limiting sensitivity based on developer's desires. 
+
+
+### Some Further Explainations
+ 
+When I started researching on this topic, I was very confused on a lot of different needs listed above. I want to explain below every single thing that is not so obvious when first starting out. 
+
+Beginning with: `requestPropertyName`, the name is not super self explainatory if you aren't familiar with how requests and metadata work. To be put simply, if I have two rate limiters `globalLimiter` and `loginLimiter` then the `requestPropertyName` for each of these when making them in the beginning would look like: 
+`...requestPropertyName: 'globalLimiter', ...` and `...requestPropertyName: 'loginLimiter', ...` respectively. So to access various metadata on users through different rate limiting middleware, we can find it through one request object and the respecitive property name! If all the rate limiters were named `rateLimit`, then those collisions can be bad or very bad.
+
+Next, `reqSuccessful`. This property is calculated based on each request that comes in. It is designed to see if the HTTP status code is below a 400, which means it was a success. This boolean can be used in several applications depending on the developer's needs. 
+
+Another is `passOnStoreError`. This one was the most confusing for me personally. I thought that this was weird since why would we want anything to pass during a store error? Turns out, there are some caveats to this depending on the type of store error. The option is false by default, but if a developer needs it to be on and knows what they are doing, its toggable for that reason. 
+Now a reason as to why one would want this to be on is the following example. If our application is not dealing with sensitive data (i.e. bank information) then during a store outage we can prefer serving traffic and accept temporary overuse of requests (rate limiter off). If the application revolves around sensitive data, we definitely do NOT want the rate limiter to be off. It is more highly advisable to prevent a hacker brute forcing requests on a hypothetical weakpoint to gain access to sensitive information after somehow finding out the rate limiter is off.  
+
+
 
 ## Testing
 
@@ -213,4 +250,5 @@ For anyone that is unaware or heard of them and does not know what these types o
 **Integration** tests verify all of the modules of the software combined. Contrary to unit tests, integration tests do not know the internal design of the software, it assumes it is law and checks if our code is *integrated* with the external dependencies to create an overall working system. These tests are executed by the tester and is performed *after* unit testing is complete. 
 
 Since integration tests do not know internal designs of interfaces, it is difficult to detect defects, hence why unit tests handle those types of verifications themselves. A common example of an external part is data integrity involving retrieving and storing data in a database, which is something that we will be doing!
+
 
