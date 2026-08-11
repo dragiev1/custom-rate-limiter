@@ -1,4 +1,5 @@
 import type { ClientRateLimitInfo, Options, Store } from "./types";
+import { Validations } from "./validations";
 
 
 type Client = {
@@ -16,6 +17,9 @@ export class MemoryStore implements Store {
   interval?: NodeJS.Timeout  // Reference to current timer
 
   localKeys?: true  // IP addresses are accessible locally
+
+  // Strict type checking, on by default
+  constructor(private validations?: Validations) {}
 
   // Initialization of the MemoryStore
   init(options: Options): void {
