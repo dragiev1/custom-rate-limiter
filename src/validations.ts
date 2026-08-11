@@ -100,7 +100,7 @@ const validations = {
   },
 
   // Ensures a single store instance is not used with multiple rate limit instances and prevents state bleeding
-  unsharedStore(store: Store) {
+  uniqueStorePerLimiter(store: Store) {
     if (usedStores.has(store)) {
       const maybeUniquePrefix = store?.localKeys ? "" : " (with unique prefix)";
       throw new ValidationError(

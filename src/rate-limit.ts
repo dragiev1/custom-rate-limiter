@@ -64,7 +64,11 @@ const rateLimit = (passedOptions?: Partial<Options>): RateLimitRequestHandler =>
   debug('Initializing new rate limiter with %o', config.store.constructor.name)
   for (const [key, val] of Object.entries(config)) debug('set %s to %o', key, val)
 
-  
+  // Limiter should not be created because of a request
+  config.validations.creationStack(config.store)
+  // Store instance should not be shared among multiple rate limiters
+  config.validations.uniqueStorePerLimiter(config.store)
+
   
   //  Call store initialization method
   if (typeof config.store.init === "function") {
@@ -72,29 +76,42 @@ const rateLimit = (passedOptions?: Partial<Options>): RateLimitRequestHandler =>
       const storeInit = config.store.init(options);
       if (storeInit instanceof Promise)
         storeInit.catch((e) =>
-          config.logger.error(
-            e,
-            "custom-rate-limiter: async error at store initialization.",
-          ),
-        );
-    } catch (e) {
       config.logger.error(
         e,
-        "custom-rate-limiter: error during initialization.",
-      );
-    }
+        "custom-rate-limiter: async error at store initialization.",
+      ),
+    );
+  } catch (e) {
+    config.logger.error(
+      e,
+      "custom-rate-limiter: error during initialization.",
+    );
   }
+}
 
-  // Middleware setup
-  const middleware = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ) => {
-    //  Skip if needed
-    const skip = await config.skip(req, res);
-    if (skip) return next();
+// Middleware setup
+const middleware = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  //  Ignore certain requests (e.g. 500 server errors don't count)
+  const errorPromise =
+    config.skipFailedRequests &&
+    new Promise<void>((resolve) => res.once("error", resolve));
+  //  If client was disconnected before the server could finish sending
+  const closePromise =
+    config.skipFailedRequests &&
+    new Promise<void>((resolve) => res.once("close", resolve));
+  const finishPromise = 
+    (config.skipFailedRequests || config.skipSuccessfulRequests) &&
+    new Promise<void>((resolve) => res.once('finish', resolve))
 
+
+  //  Skip if needed
+  const skip = await config.skip(req, res);
+  if (skip) return next();
+  
     //  Create an augmented request
     const augmentedRequest = req as AugmentedRequest;
 
@@ -120,6 +137,11 @@ const rateLimit = (passedOptions?: Partial<Options>): RateLimitRequestHandler =>
       return;
     }
 
+    // Validate totalHits is positive and only increased by 1 hit and not more
+    config.validations.positiveHits(totalHits)
+    config.validations.singleCount(req, config.store, key)
+
+
     //  Check limit for client
     //  If limit is determined by a function, call it or just grab
     const getLimit =
@@ -127,6 +149,7 @@ const rateLimit = (passedOptions?: Partial<Options>): RateLimitRequestHandler =>
         ? config.limit(req, res)
         : config.limit;
     const limit = await getLimit;
+    config.validations.limit(limit)
 
     //  Create rate limit info object for client
     const info: RateLimitInfo = {
@@ -159,6 +182,7 @@ const rateLimit = (passedOptions?: Partial<Options>): RateLimitRequestHandler =>
           break;
 
         case "draft-7":
+          config.validations.headersResetTime(info.resetTime)
           setDraft7Headers(res, info, config.windowMs);
           break;
 
@@ -168,22 +192,16 @@ const rateLimit = (passedOptions?: Partial<Options>): RateLimitRequestHandler =>
               ? config.identifier(req, res)
               : config.identifier;
           const name = await getName
+          config.validations.headersResetTime(info.resetTime)
           setDraft8Headers(res, info, config.windowMs, key, name);
           break;
 
         default:
+          config.validations.headersDraftVersion(config.standardHeaders)
           break;
       }
     }
 
-    //  Ignore certain requests (e.g. 500 server errors don't count)
-    const endOfPromise =
-      (config.skipFailedRequests || config.skipSuccessfulRequests) &&
-      new Promise<void>((resolve) => res.once("finish", resolve));
-    //  If client was disconnected before the server could finish sending
-    const closePromise =
-      config.skipFailedRequests &&
-      new Promise<void>((resolve) => res.once("close", resolve));
 
     //  Skip failed/successful requests, decrement hit accordingly
     if (config.skipFailedRequests || config.skipSuccessfulRequests) {
@@ -200,17 +218,13 @@ const rateLimit = (passedOptions?: Partial<Options>): RateLimitRequestHandler =>
 
       
       if (config.skipFailedRequests) {
-        if (endOfPromise)
-          void endOfPromise
+        if (finishPromise)
+          void finishPromise
             .then(async () => {
-              if (!(await config.reqSuccessful(req, res))) await decrementKey();
+              const success = config.reqSuccessful(req, res)
+              debug('Computed reqSuccessful as %o', success)
+              if (!success) await decrementKey();
             })
-            .catch((e) => {
-              config.logger.error(
-                e,
-                "custom-rate-limiter: error during request cleanup.",
-              );
-            });
 
         if (closePromise)
           void closePromise
@@ -218,26 +232,22 @@ const rateLimit = (passedOptions?: Partial<Options>): RateLimitRequestHandler =>
               //  Checks if the stream was cut short
               if (!res.writableEnded) await decrementKey();
             })
-            .catch((e) => {
-              config.logger.error(
-                e,
-                "custom-rate-limiter: error during request closing.",
-              );
-            });
+            
+
+        if (errorPromise) 
+          void errorPromise.then(async () => {
+            await decrementKey()
+          })
       }
 
       if (config.skipSuccessfulRequests) {
-        if (endOfPromise) {
-          void endOfPromise
+        if (finishPromise) {
+          void finishPromise
             .then(async () => {
-              if (await config.reqSuccessful(req, res)) await decrementKey();
+              const success = await config.reqSuccessful(req, res)
+              debug('Computed reqSuccessful as %o', success)
+              if (success) await decrementKey();
             })
-            .catch((e) => {
-              config.logger.error(
-                e,
-                "custom-rate-limiter: error during skipping successful requests.",
-              );
-            });
         }
       }
     }
