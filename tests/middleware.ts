@@ -912,9 +912,6 @@ describe("middleware test", () => {
   })
 
 
-
-
-
   describe('logger set', () => {
     let logger: Logger
 
@@ -940,10 +937,30 @@ describe("middleware test", () => {
 
       expect(console.error).not.toHaveBeenCalled()
       expect(logger.error).toHaveBeenCalledWith(
-        expect.objectContaining({code:'custom-rate-limiter: IPV6_SUBNET'}),
+        expect.objectContaining({code:'CRL_ERR_IPV6_SUBNET'}),
       ) 
     })
-    
-    
+
+
+    it('should use logger instead of console when store throws an error and `passOnStoreError` is true', async () => {
+      const limiter = rateLimit({
+        limit: 1,
+        store: new StoreThrowErrors(),
+        passOnStoreError: true,
+        validate: false,
+        logger,
+      })
+
+      const request = {}
+      const response = {}
+      await limiter(request as Request, response as Response, jest.fn())
+
+      expect(console.error).not.toHaveBeenCalled()
+      expect(logger.error).toHaveBeenCalledTimes(1)
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('allowing'),
+        expect.any(Error),
+      )
+    })
   })
 })

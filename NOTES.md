@@ -174,8 +174,8 @@ I want to go over all the types of configurations to be possible in this rate li
 * `limit`: Max amount of requests allowed per user within the time interval set.
 * `message`: A message to add for users to know they have been rate limited.
 * `statusCode`: HTTP status code to send back when a client has been rate limited.
-* `legacyHeaders`: A boolean used to toggle the use of old style headers (X-RateLimit-Y).
-* `standardHeaders`: Support for standardized headers (defaults to false).
+* `legacyHeaders`: A boolean used to toggle the use of old style headers *(X-RateLimit-Y)*.
+* `standardHeaders`: Support for standardized headers *(defaults to false)*.
 * `requestPropertyName`: Specific name for accessing per-request metadata (`request.**rateLimiterName** = ...`)
 * `identifier`: 8th draft specification for the name used to identify the quota policy in headers. 
 * `skipFailedRequests`: Boolean to either skip a user's hit based on any error causing the request to fail or not go through. 
@@ -186,7 +186,7 @@ I want to go over all the types of configurations to be possible in this rate li
 * `reqSuccessful`: Boolean stating whether a request was successful or not.
 * `passOnStoreError`: Useful boolean to allow a user to make a further requests if the ability to store information on the rate limiter is either broken or down. 
 * `store`: The datastructure or specific database used to store user's IPs, their hit counts, and other necessary data.
-* `validate`: Boolean used to allow validation of data and objects as they come in and out.
+* `validate`: Boolean used to allow validation of data and objects as they come in and out *(on at default)*.
 * `logger`: Custom logger for processing/displaying errors and warning to the server console.
 * `ipv6Subnet`: Subnet mask settings for rate limiting sensitivity based on developer's desires. 
 
