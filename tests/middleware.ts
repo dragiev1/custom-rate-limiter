@@ -19,7 +19,6 @@ import type { Request, Response, NextFunction } from "express"
 import { agent as request } from 'supertest'
 import { AddressInfo } from "node:net"
 import { EventEmitter } from "node:stream"
-import expectCookies from "supertest/lib/cookies"
 
 
 //  Starting point of middleware tests
@@ -861,13 +860,35 @@ describe("middleware test", () => {
     savedRequestObj = undefined
     await request(app).get('/').query({ key: 3 }).expect(420, 'Too many requests')
     expect(savedRequestObj.rateLimitKey.remaining).toEqual(0)
-    expect(savedRequestObj.rateLimitGlobal.remaining).toEqual(0)
-
-    savedRequestObj = undefined
+    expect(savedRequestObj.rateLimitGlobal.remaining).toEqual(0)    
   })
 
 
-  it('', async () => {})
+  it('should not pass if the store throws an error by default', async () => {
+    const app = createServer(rateLimit({
+      limit: 1,
+      store: new StoreThrowErrors(),
+    }))
+    await request(app).get('/').expect(500)
+  })
+
+  it('should pass if the store throws an error and passOnStoreError is true', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {})  // Prevents noisy test outputs and allows test to assert that logging happened
+    const app = createServer(rateLimit({
+      limit: 1,
+      store: new StoreThrowErrors(),
+      passOnStoreError: true,
+    }))
+
+    await request(app).get('/').expect(200)
+    expect(console.error).toHaveBeenCalledTimes(1)
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('allowing'),
+      expect.any(Error)
+    )
+  })
+
+
 
 
   describe('logger set', () => {

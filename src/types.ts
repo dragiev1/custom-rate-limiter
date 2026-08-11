@@ -45,7 +45,7 @@ export type Options = {
   reqSuccessful: ValueDeterminingMiddleware<boolean>
   passOnStoreError: boolean  // If the store errors, allow the request
   store: Store  // The store used to store the hit count for every user
-  validate: boolean | EnabledValidations  //  
+  validate: boolean | EnabledValidations  // Validations with strict type checking
   logger: Logger
 
   /**
