@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/dragiev1/custom-rate-limiter#readme",
   "dependencies": {
+    "debug": "^4.4.3",
     "express": ">= 4.11",
     "ip-address": "^10.2.0",
     "supertest": "^7.2.2"
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
+    "@types/debug": "^4.1.13",
     "@types/node": "^25.9.3",
     "@types/supertest": "^7.2.1",
     "jest": "^30.4.2",

@@ -1,8 +1,10 @@
 // Rate limit middleware
 import { Request, Response, NextFunction } from "express";
+import createDebugLogger from 'debug';
 import {
   AugmentedRequest,
   DraftHeadersVersion,
+  EnabledValidations,
   Logger,
   Options,
   RateLimitExceededEventHandler,
@@ -21,6 +23,7 @@ import {
   setDraft8Headers,
   setLegacyHeaders,
 } from "./headers";
+import { getValidations, type Validations } from "./validations";
 
 /**
  * Dupe object of Options purely for type safety and dev experience.
@@ -44,13 +47,24 @@ type Configuration = {
   reqSuccessful: ValueDeterminingMiddleware<boolean>;
   store: Store;
   passOnStoreError: boolean;
+  validations: Validations,
   logger: Logger;
 };
+
+
+
+
 
 //  IP rate limiter middleware
 const rateLimit = (passedOptions?: Partial<Options>): RateLimitRequestHandler => {
   const config = parseOptions(passedOptions ?? {});
   const options = getOptionsFromConfig(config);
+
+  const debug = createDebugLogger('custom-rate-limiter')
+  debug('Initializing new rate limiter with %o', config.store.constructor.name)
+  for (const [key, val] of Object.entries(config)) debug('set %s to %o', key, val)
+
+  
   
   //  Call store initialization method
   if (typeof config.store.init === "function") {
@@ -263,6 +277,19 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
 
   const logger = passedOptions.logger ?? ConsoleLogger;
 
+  // Grab and run basic validations
+  const validations = getValidations(
+    definedOptions?.validate ?? true,  // Run validations by default
+    logger,
+  )
+    validations.validationsConfig()
+    validations.knownOptions(passedOptions)
+  if (
+    definedOptions.ipv6Subnet !== undefined &&
+    typeof definedOptions.ipv6Subnet !== 'function'
+  ) validations.ipv6Subnet(definedOptions.ipv6Subnet)
+  validations.keyGeneratorIpFallback(definedOptions.keyGen)
+
   let standardHeaders = definedOptions.standardHeaders ?? true; // Use standard headers as default
   if (standardHeaders === true) standardHeaders = "draft-6"; // Default to draft-6
 
@@ -282,6 +309,12 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
 
     //  Make async to allow more complexity if wanted, otherwise it acts synchronously
     async keyGen(req: Request, res: Response): Promise<string> {
+      // Validations 
+      validations.ip(req.ip)
+      validations.trustProxy(req)
+      validations.xForwardedForHeader(req)
+      validations.forwardedHeader(req)
+
       const ip: string = req.ip!;
 
       //  Default to 56 mask if unprovided
@@ -293,6 +326,9 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
           typeof config.ipv6Subnet === "function"
             ? await config.ipv6Subnet(req, res)
             : config.ipv6Subnet;
+
+        if (typeof config.ipv6Subnet === 'function')
+          validations.ipv6Subnet(subnet)
 
       return ipKeyGen(ip, subnet);
     },
@@ -336,8 +372,9 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
     passOnStoreError: false,
     ...definedOptions, // Allow fields above to be overwritten by already defined options
     standardHeaders,
-    store: definedOptions.store ?? new MemoryStore(), // If store does not exist, create a new one
+    store: definedOptions.store ?? new MemoryStore(validations), // If store does not exist, create a new one
     logger,
+    validations,
   };
 
   //  Check that the store correctly implemented the Store interface
@@ -357,8 +394,13 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
   return config;
 };
 
+// Adapter mapper function
 const getOptionsFromConfig = (config: Configuration): Options => {
-  return config as Options;
+  const { validations, ...directlyPassableEntries } = config
+  return {
+    ...directlyPassableEntries,
+    validate: validations.enabled as EnabledValidations
+  }
 };
 
 // Removes properties where their value is set to undefined
