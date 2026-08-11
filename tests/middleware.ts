@@ -873,7 +873,7 @@ describe("middleware test", () => {
   })
 
   it('should pass if the store throws an error and passOnStoreError is true', async () => {
-    jest.spyOn(console, 'error').mockImplementation(() => {})  // Prevents noisy test outputs and allows test to assert that logging happened
+    jest.spyOn(console, 'error').mockImplementation(() => {})  // Prevents noisy test outputs and allows test to assert that logging happened for the store error
     const app = createServer(rateLimit({
       limit: 1,
       store: new StoreThrowErrors(),
@@ -887,6 +887,30 @@ describe("middleware test", () => {
       expect.any(Error)
     )
   })
+
+
+  // Checks control flow of the middleware, so when a store errors and `passOnStore` is true, middlware allows request by calling next() exactly once only
+  it('should only call next when passOnStoreError causes it to skip limiting', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {})
+    const limiter = rateLimit({
+      limit: 1,
+      store: new StoreThrowErrors(),
+      passOnStoreError: true,
+      validate: false,
+    })
+
+    const request = {}
+    const response = {}
+    const next: NextFunction = jest.fn() as NextFunction
+    await limiter(request as Request, response as Response, next)
+    expect(next).toHaveBeenCalledTimes(1)
+    expect(console.error).toHaveBeenCalledTimes(1)
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('allowing'),
+      expect.any(Error)
+    )
+  })
+
 
 
 
