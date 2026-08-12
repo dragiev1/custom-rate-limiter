@@ -227,10 +227,9 @@ const rateLimit = (
 
     //  Skip failed/successful requests, decrement hit accordingly
     if (config.skipFailedRequests || config.skipSuccessfulRequests) {
-      let decremented = false
-
       //  Ensure we only decrement once per hit recorded
       //  even if multiple settings are set to true
+      let decremented = false
       const decrementKey = async () => {
         if (!decremented) {
           if (resetTime && Date.now() >= resetTime.getTime()) return
@@ -244,7 +243,7 @@ const rateLimit = (
       if (config.skipFailedRequests) {
         if (finishPromise)
           void finishPromise.then(async () => {
-            const success = config.reqSuccessful(req, res)
+            const success = await config.reqSuccessful(req, res)
             debug("Computed reqSuccessful as %o", success)
             if (!success) await decrementKey()
           })

@@ -477,7 +477,7 @@ describe("middleware test", () => {
     expect(store.decrementWasCalled).toEqual(false)
   })
 
-  it('should `decrement` hits when requests succeed, `skipSuccessfulRequests` is true and custom `requestWasSuccessful` method is used', async () => {
+  it('should `decrement` hits when requests succeed, `skipSuccessfulRequests` is true and custom `reqSuccessful` method is used', async () => {
     const store = new MockStore()
     const app = createServer(rateLimit({
       limit: 3,
@@ -491,7 +491,7 @@ describe("middleware test", () => {
   })
 
 
-  it('should not `decrement` hits when requests fail, `skipSuccessfulRequests` is true, and custom `requestWasSuccessful` method is used', async () => {
+  it('should not `decrement` hits when requests fail, `skipSuccessfulRequests` is true, and custom `reqSuccessful` is used', async () => {
     const store = new MockStore()
     const app = createServer(rateLimit({
       skipSuccessfulRequests: true,
@@ -552,15 +552,15 @@ describe("middleware test", () => {
     expect(store.decrementWasCalled).toEqual(false)
   })
 
-  it('should `decrement` hits requests fail, `skipFailedRequests` is set to true, and custom `reqSuccessful` is used', async () => {
+  it('should `decrement` hits requests fail, `skipFailedRequests` is set to true, and custom `reqSuccessful` is used which returns a promise', async () => {
     const store = new MockStore()
     const app = createServer(rateLimit({
-      skipFailedRequests: true,
+      skipFailedRequests: true,  // User isn't penalized for network failures
       reqSuccessful: async () => false,
       store,
     }))
 
-    await request(app).get('/error').expect(400)
+    await request(app).get('/').expect(200)
     expect(store.decrementWasCalled).toEqual(true)
   })
 
