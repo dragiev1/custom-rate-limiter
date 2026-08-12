@@ -481,11 +481,10 @@ describe("middleware test", () => {
     const store = new MockStore()
     const app = createServer(rateLimit({
       limit: 3,
-      windowMs: 40,
+      windowMs: 10000,
       skipSuccessfulRequests: true,
       reqSuccessful: (_req, res) => res.statusCode === 200,
     }))
-
     await request(app).get('/').expect(200)
     expect(store.decrementWasCalled).toEqual(true)
   })
