@@ -745,7 +745,9 @@ describe("middleware test", () => {
 
 
   it('should pass the number of hits and the limit to the next request handler in the `request.rateLimit` property', async () => {
+    // Temp placeholder for request object
     let savedRequestObject: any
+    // Function to save said request object before it gets wiped
     const saveRequestObject = (
       req: Request,
       _res: Response,
@@ -755,32 +757,38 @@ describe("middleware test", () => {
       next()
     }
 
+    // Start up a server with a rate limiter
     const app = createServer([
       saveRequestObject,
       rateLimit({
-        legacyHeaders: false,
         limit: 6,
       })
     ])
 
+
+    // Wait for the HTTP response 
     await request(app).get('/').expect(200)
+    // Then expect the response to be the same as the below object, as one hit was used and remaining should be 6 - 1 = 5
     expect(savedRequestObject?.rateLimit).toMatchObject({
       limit: 6,
-      used: 1,
+      hits: 1,
       remaining: 5,
       resetTime: expect.any(Date),
     })
 
+    // Make sure the hidden property is also set
     expect(savedRequestObject?.rateLimit.current).toBe(1)
 
     savedRequestObject = undefined  // Remove old request object for new one
-    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(200)  // Make another request and expect it to OK
+    // Again, check if the object properly decremented `remaining`, `limit` is the same, and `used` incremented
     expect(savedRequestObject?.rateLimit).toMatchObject({
       limit: 6,
-      used: 2,
+      hits: 2,
       remaining: 4,
       resetTime: expect.any(Date),
     })
+    
     expect(savedRequestObject?.rateLimit.current).toBe(2)
   })
 
