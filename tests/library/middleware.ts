@@ -281,7 +281,7 @@ describe("middleware test", () => {
     }))
 
     await request(app).get('/').expect(200)
-    await request(app).get('/').expect(429).expect(statusCode)
+    await request(app).get('/').expect(448).expect(statusCode)
   })
 
   it('should allow responding with a JSON msg', async () => {
@@ -713,9 +713,6 @@ describe("middleware test", () => {
     expect(store.decrementWasCalled).toEqual(true)
   })
 
-
-  // Handler tests
-
   it('should forward errors in the handler using `next()`', async () => {
     let errorCaught = false
     
@@ -889,8 +886,8 @@ describe("middleware test", () => {
   })
 
 
-  // Checks control flow of the middleware, so when a store errors and `passOnStore` is true, middlware allows request by calling next() exactly once only
-  it('should only call next when passOnStoreError causes it to skip limiting', async () => {
+  // Checks control flow of the middleware, so when a store errors and `passOnStore` is true, middleware allows request by calling next() exactly once only
+  it('should only call next when passOnStoreError causes it to skip hit on limit', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => {})
     const limiter = rateLimit({
       limit: 1,

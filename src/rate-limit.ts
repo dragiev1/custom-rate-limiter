@@ -134,14 +134,16 @@ const rateLimit = (
       totalHits = incResult.totalHits
       resetTime = incResult.resetTime
     } catch (e) {
-      if (config.passOnStoreError)
+      if (config.passOnStoreError) {
         config.logger.error(
           e,
           "custom-rate-limiter: error from store, allowing request without rate-limiting.",
         )
+        next()
+        return
+      }
       //  Pass error to express error handler instead of going through the rate limit
-      else next(e)
-      return
+      throw e
     }
 
     // Validate totalHits is positive and only increased by 1 hit and not more
