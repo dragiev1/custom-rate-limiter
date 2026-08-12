@@ -567,7 +567,7 @@ describe("middleware test", () => {
   /**
    * Tests to see if the middleware prevents penalizations of when users disconnect abruptly on accident.
    * In English what is happening here:
-   * Creates an express app with rate limiter + real clock.
+   * Creates an express app with rate limiter + real clock using Jest.
    * Start server and listen to random port, await listening to pause test until server is fully booted.
    * Use `HTTP.get` to send a request to /hang-server.
    * Server catches request and fire `recieved` function; resolving `connectionOpened` Promise.
@@ -693,7 +693,7 @@ describe("middleware test", () => {
       store,
     }))
 
-    await app.get('/crash')
+    await request(app).get('/crash')
 
     expect(store.decrementWasCalled).toEqual(true)
   })
@@ -706,9 +706,10 @@ describe("middleware test", () => {
       store,
     }))
 
-    await app.get('/').expect(200)
-    await app.get('/').expect(200)
-    await app.get('/').expect(429)
+    
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(200)
+    await request(app).get('/').expect(429)
 
     expect(store.decrementWasCalled).toEqual(true)
   })
