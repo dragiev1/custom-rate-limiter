@@ -117,7 +117,6 @@ const rateLimit = (
       return
     }
 
-    //  Create an augmented request
     const augmentedRequest = req as AugmentedRequest
 
     //  Get unique key for client
@@ -142,7 +141,7 @@ const rateLimit = (
         next()
         return
       }
-      //  Pass error to express error handler instead of going through the rate limit
+
       throw e
     }
 

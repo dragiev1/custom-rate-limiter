@@ -825,8 +825,8 @@ describe("middleware test", () => {
 
     // Key 
     expect(savedRequestObj.rateLimitKey).toBeTruthy()
-    expect(savedRequestObj.rateLimitkey.limit).toEqual(2)
-    expect(savedRequestObj.rateLimitkey.remaining).toEqual(1)
+    expect(savedRequestObj.rateLimitKey.limit).toEqual(2)
+    expect(savedRequestObj.rateLimitKey.remaining).toEqual(1)
 
     // Global
     expect(savedRequestObj.rateLimitGlobal).toBeTruthy()
@@ -851,13 +851,14 @@ describe("middleware test", () => {
     expect(savedRequestObj.rateLimitGlobal.remaining).toEqual(1)
 
     savedRequestObj = undefined
-    await request(app).get('/').query({ key: 1 }).expect(420, 'Too many requests')  // Check if global limiter limited the request!
+    await request(app).get('/').query({ key: 1 }).expect(420, 'Test')  // Check if global limiter limited the request!
     expect(savedRequestObj.rateLimitKey.remaining).toEqual(0)
 
     savedRequestObj = undefined
-    await request(app).get('/').query({ key: 3 }).expect(420, 'Too many requests')
+    await request(app).get('/').query({ key: 3 }).expect(200)
+    await request(app).get('/').query({ key: 3 }).expect(429, 'Too many requests')
     expect(savedRequestObj.rateLimitKey.remaining).toEqual(0)
-    expect(savedRequestObj.rateLimitGlobal.remaining).toEqual(0)    
+    expect(savedRequestObj.rateLimitGlobal.remaining).toEqual(0)
   })
 
 
