@@ -484,6 +484,7 @@ describe("middleware test", () => {
       windowMs: 40,
       skipSuccessfulRequests: true,
       reqSuccessful: (_req, res) => res.statusCode === 200,
+      store,
     }))
 
     await request(app).get('/').expect(200)
