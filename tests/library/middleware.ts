@@ -218,7 +218,7 @@ describe("middleware test", () => {
     /**
      * Creates a mock implementation on fake store and tests if errors are properly thrown from the store
      */
-    it('should catch async errors thrown from store initialization method', () => {
+    it('should catch synchronous errors thrown from store initialization method', () => {
       const store = new MockStore()
       jest.spyOn(store, 'init').mockImplementation(() => {
         throw new Error('test error')

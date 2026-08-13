@@ -83,7 +83,7 @@ const rateLimit = (
     } catch (e) {
       config.logger.error(
         e,
-        "custom-rate-limiter: error during initialization.",
+        "custom-rate-limiter: error during store initialization.",
       )
     }
   }
