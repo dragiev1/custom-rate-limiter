@@ -2,6 +2,7 @@
 import { createServer } from "./create-server"
 import HTTP from 'node:http'
 import rateLimit, {
+  IncrementResponse,
   Logger,
   type ClientRateLimitInfo,
   type Options,
@@ -98,6 +99,47 @@ describe("middleware test", () => {
     async resetKey(_key: string): Promise<void> {}
   
     async resetAll(): Promise<void> {}
+  }
+
+  //  Store specifically for having no get method
+  class MockStoreWithoutGet implements Store {
+    initWasCalled = false
+    incrementWasCalled = false
+    decrementWasCalled = false
+    resetKeyWasCalled = false
+    getWasCalled = false
+    resetAllWasCalled = false
+  
+    counter = 0
+    windowMs = 0
+  
+    init(options: Options): void {
+      this.initWasCalled = true
+      this.windowMs = options.windowMs
+    }
+  
+    async inc(_key: string): Promise<ClientRateLimitInfo> {
+      this.counter += 1
+      this.incrementWasCalled = true
+  
+      return {
+        totalHits: this.counter,
+        resetTime: new Date(Date.now() + this.windowMs),
+      }
+    }
+  
+    async dec(_key: string): Promise<void> {
+      this.counter -= 1
+      this.decrementWasCalled = true
+    }
+  
+    async resetKey(_key: string): Promise<void> {
+      this.resetKeyWasCalled = true
+    }
+  
+    async resetAll(): Promise<void> {
+      this.resetAllWasCalled = true
+    }
   }
   
   //  Jest's it function for setting global single test cases
@@ -407,7 +449,7 @@ describe("middleware test", () => {
   })
 
   it('should throw error if `get` does not exist on the store', async () => {
-    const store = new MockStore()
+    const store = new MockStoreWithoutGet()  // Has no get function
     const limiter = rateLimit({ store })
 
     expect(limiter.getKey).toThrow()
@@ -481,7 +523,7 @@ describe("middleware test", () => {
     const store = new MockStore()
     const app = createServer(rateLimit({
       limit: 3,
-      windowMs: 10000,
+      windowMs: 80,
       skipSuccessfulRequests: true,
       reqSuccessful: (_req, res) => res.statusCode === 200,
       store,

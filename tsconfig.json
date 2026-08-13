@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        // Defines the JS version and how modules are loaded
+        "target": "es2025",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+
+        // Enabled all strict type checking options
+        "strict": true,
+
+        // Standard modern TS rules
+        "esModuleInterop": true,  // Allows for nicer looking imports
+        "skipLibCheck": true,  // Ignores checking node_modules libraries
+        "forceConsistentCasingInFileNames": true,  // Creates consistency with capitalization of file names throughout various OSes
+        "resolveJsonModule": true,  // Allows importing of JSON files without issues
+        "isolatedModules": true,  // Solves the problem with how TS can be compiled: Fast line compilers or ALL at once
+        // Cont'd: it forces to write TS that is compatiable with both methods and should always be on
+
+    },
+    "include": ["src/*"],
+    "exclude": ["node_modules"]
+}
