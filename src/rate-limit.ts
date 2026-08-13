@@ -97,14 +97,14 @@ const rateLimit = (
     //  Ignore certain requests (e.g. 500 server errors don't count)
     const errorPromise =
       config.skipFailedRequests &&
-      new Promise<void>((resolve) => res.once("error", resolve))
+      new Promise<void>((resolve) => res.once('error', resolve))
     //  If client was disconnected before the server could finish sending
     const closePromise =
       config.skipFailedRequests &&
-      new Promise<void>((resolve) => res.once("close", resolve))
+      new Promise<void>((resolve) => res.once('close', resolve))
     const finishPromise =
       (config.skipFailedRequests || config.skipSuccessfulRequests) &&
-      new Promise<void>((resolve) => res.once("finish", resolve))
+      new Promise<void>((resolve) => res.once('finish', resolve))
 
     debug("Requested to %o", req.originalUrl)
     debug("Request from ip %o", req.ip)
