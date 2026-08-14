@@ -6,7 +6,7 @@ const tsJestTransformCfg = createDefaultPreset().transform;
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: "node",
-  testMatch: ['**/tests/library/middleware.ts'],
+  testMatch: ['**/tests/library/memory-store.ts'],
   transform: {
     ...tsJestTransformCfg,
   },
