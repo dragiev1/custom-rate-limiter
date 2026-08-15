@@ -1,175 +1,197 @@
 // Tests built in memory store
-import { describe, beforeEach, afterEach, jest, it, expect } from '@jest/globals'
-import { MemoryStore } from '../../src/memory-store'
-import { Options } from '../../src/types'
-import { clearInterval } from 'node:timers'
+import {
+  describe,
+  beforeEach,
+  afterEach,
+  jest,
+  it,
+  expect,
+} from "@jest/globals"
+import { MemoryStore } from "../../src/memory-store"
+import { Options } from "../../src/types"
+import { clearInterval } from "node:timers"
 
 const min = 60 * 1000
 
 // Start of the memory store test
-describe('memory store test', () => {
-    beforeEach(() => {
-        jest.useFakeTimers()
-        jest.spyOn(globalThis, 'clearInterval')  // Test the cleanup process of the memory store when periodically sweeping server's RAM and delete old rate-limit records 
+describe("memory store test", () => {
+  beforeEach(() => {
+    jest.useFakeTimers()
+    jest.spyOn(globalThis, "clearInterval") // Test the cleanup process of the memory store when periodically sweeping server's RAM and delete old rate-limit records
+  })
+  afterEach(() => {
+    jest.useRealTimers()
+    jest.restoreAllMocks()
+  })
+
+  it("returns the current hit count and reset time for a key", async () => {
+    const store = new MemoryStore()
+    store.init({ windowMs: min } as Options)
+    const key = "test-score"
+
+    await store.inc(key)
+
+    const response = await store.get(key)
+    expect(response).toMatchObject({
+      totalHits: 1,
+      resetTime: expect.any(Date),
     })
-    afterEach(() => {
-        jest.useRealTimers()
-        jest.restoreAllMocks()
-    })
+  })
 
+  it("sets the value to 1 on first call to `inc`", async () => {
+    const store = new MemoryStore()
+    store.init({ windowMs: min } as Options)
+    const key = "testing-inc"
 
-    it('returns the current hit count and reset time for a key', async () => {
-        const store = new MemoryStore()
-        store.init({ windowMs: min } as Options)
-        const key = 'test-score'
+    const { totalHits } = await store.inc(key)
+    expect(totalHits).toEqual(1)
+  })
 
-        await store.inc(key)
+  it("decrements key for the store when `dec` is called", async () => {
+    const store = new MemoryStore()
+    store.init({ windowMs: min } as Options)
+    const key = "testing-dec"
 
-        const response = await store.get(key)
-        expect(response).toMatchObject({
-            totalHits: 1,
-            resetTime: expect.any(Date)
-        })
-    })
+    await store.inc(key)
+    await store.dec(key)
+    const response = await store.get(key)
+    expect(response?.totalHits).toEqual(0)
+  })
 
-    it('sets the value to 1 on first call to `inc`', async () => {
-        const store = new MemoryStore()
-        store.init({ windowMs: min } as Options)
-        const key = 'testing-inc'
+  it("does not decrement when the key is below 0 and `dec` is called", async () => {
+    const store = new MemoryStore()
+    store.init({ windowMs: min } as Options)
+    const key = "test-dec"
 
-        const { totalHits } = await store.inc(key)
-        expect(totalHits).toEqual(1)
-    })
+    await store.inc(key) // totalHits = 1
+    await store.dec(key) // totalHits = 0
+    await store.dec(key) // totalHits = 0 (no change/not negative)
 
+    const response = await store.get(key)
+    expect(response).toBeDefined()
+    expect(response?.totalHits).toEqual(0)
+  })
 
-    it('decrements key for the store when `dec` is called', async () => {
-        const store = new MemoryStore()
-        store.init({ windowMs: min } as Options) 
-        const key = 'testing-dec'
+  it("resetKey should remove the key from storage", async () => {
+    const store = new MemoryStore()
+    const key = "test-resetKey"
 
-        await store.inc(key)
-        await store.dec(key)
-        const response = await store.get(key)
-        expect(response?.totalHits).toEqual(0)
-    })
+    await store.inc(key)
+    let response = await store.get(key)
+    expect(response).toBeDefined()
 
-    it('does not decrement when the key is below 0 and `dec` is called', async () => {
-        const store = new MemoryStore()
-        store.init({ windowMs: min } as Options)
-        const key = 'test-dec'
+    await store.resetKey(key)
+    response = await store.get(key)
+    expect(response).toBeUndefined()
+  })
 
-        await store.inc(key)  // totalHits = 1
-        await store.dec(key)  // totalHits = 0
-        await store.dec(key)  // totalHits = 0 (no change/not negative)
+  it("resets the count for a key in the store when `resetKey` is called", async () => {
+    const store = new MemoryStore()
+    const key = "test-resetKey"
+    store.init({ windowMs: min } as Options)
 
-        const response = await store.get(key)
-        expect(response).toBeDefined()
-        expect(response?.totalHits).toEqual(0)
-    })
+    await store.inc(key)
+    await store.resetKey(key)
 
-    it('resetKey should remove the key from storage', async () => {
-        const store = new MemoryStore()
-        const key = 'test-resetKey'
+    const totalHits = (await store.inc(key)).totalHits
+    expect(totalHits).toEqual(1)
+  })
 
-        await store.inc(key)
-        let response = await store.get(key)
-        expect(response).toBeDefined()
+  it("resets the count for all keys inside store when `resetAll` is used", async () => {
+    const store = new MemoryStore()
+    const key1 = "test-resetAll"
+    const key2 = "test-resetAll2"
+    store.init({ windowMs: min } as Options)
 
-        await store.resetKey(key)
-        response = await store.get(key)
-        expect(response).toBeUndefined()
-    })
+    await store.inc(key1)
+    await store.inc(key2)
+    // Check if client rate limit info exists first for both keys
+    let response1 = await store.get(key1)
+    let response2 = await store.get(key2)
+    expect(response1).toBeDefined()
+    expect(response2).toBeDefined()
 
-    it('resets the count for a key in the store when `resetKey` is called', async () => {
-        const store = new MemoryStore()
-        const key = 'test-resetKey'
-        store.init({ windowMs: min } as Options)
+    // Reset all and check if they are properly undefined
+    await store.resetAll()
+    response1 = await store.get(key1)
+    response2 = await store.get(key2)
+    expect(response1).toBeUndefined()
+    expect(response2).toBeUndefined()
+  })
 
-        await store.inc(key)
-        await store.resetKey(key)
+  it("clears the timer when `shutdown` is called", async () => {
+    const store = new MemoryStore()
+    store.init({ windowMs: min } as Options)
+    expect(store.interval).toBeDefined()
 
-        const totalHits = (await store.inc(key)).totalHits
-        expect(totalHits).toEqual(1)
-    })
+    store.shutdown()
+    expect(globalThis.clearInterval).toHaveBeenCalledWith(store.interval)
+  })
 
-    it('resets the count for all keys inside store when `resetAll` is used', async () => {
-        const store = new MemoryStore()
-        const key1 = 'test-resetAll'
-        const key2 = 'test-resetAll2'
-        store.init({ windowMs: min } as Options)
+  it("resets count for all the keys in the store when the timeout is reached", async () => {
+    const store = new MemoryStore()
+    store.init({ windowMs: min } as Options)
+    const key1 = "test-resetKey1"
+    const key2 = "test-resetKey2"
 
-        await store.inc(key1)
-        await store.inc(key2)
-        // Check if client rate limit info exists first for both keys 
-        let response1 = await store.get(key1)
-        let response2 = await store.get(key2)
-        expect(response1).toBeDefined()
-        expect(response2).toBeDefined()
+    await store.inc(key1)
+    await store.inc(key2)
+    jest.advanceTimersByTime(min + 1000) // 61 seconds later
+    const { totalHits: totalHits1 } = await store.inc(key1)
+    const { totalHits: totalHits2 } = await store.inc(key2)
+    expect(totalHits1).toEqual(1)
+    expect(totalHits2).toEqual(1)
+  })
 
-        // Reset all and check if they are properly undefined
-        await store.resetAll()
-        response1 = await store.get(key1)
-        response2 = await store.get(key2)
-        expect(response1).toBeUndefined()
-        expect(response2).toBeUndefined()
-    })
+  // Touches on a topic called Environment Compatibility (Isomorphic Code)
+  /**
+   * Tests whether the code will crash when run in a web-browser-like environment.
+   * Node.js vs Browser timers behave differently on where the code is running.
+   * Node.js `setInterval()` returns a `Timeout` instance, which has special methods attached to it. (ex: `.unref()`)
+   * Web browser `setInterval()` returns a simple Number (integer ID) and Numbers do not have said special methods. (ex: no `.unref()`)
+   * Node.js will keep server running forever just to keep the timer alive, So one needs to call `.unref()` to stop them.
+   * Browsers combine Chromium + Node.js together and developers sometimes bundle backend libraries to run in environments that mimic browsers.
+   * So in all of these environments, `setInterval` returns a Number, not a Node.js object.
+   * This tests passes because we use `?.` chaining operator to safely prevent calling `.unref()` on a Number.
+   */
+  it("can run in electron where setInterval does not return a Timeout object with an unset function", async () => {
+    const ogSetInterval = globalThis.setInterval
+    let timeoutId = 1
+    let realTimeoutId: NodeJS.Timer
+    // @ts-expect-error  We want to not return a deprecated Timer instance for testing
+    jest.spyOn(globalThis, "setTimeout").mockImplementation((callback, timeout) => {
+        realTimeoutId = ogSetInterval(callback, timeout)
+        return timeoutId++
+      })
 
-    it('clears the timer when `shutdown` is called', async () => {
-        const store = new MemoryStore()
-        store.init({ windowMs: min } as Options)
-        expect(store.interval).toBeDefined()
+    const store = new MemoryStore()
+    store.init({ windowMs: -1 } as Options)
+    const key = "test-store"
 
-        store.shutdown()
-        expect(globalThis.clearInterval).toHaveBeenCalledWith(store.interval)
-    })
+    try {
+      const { totalHits } = await store.inc(key)
+      expect(totalHits).toEqual(1)
+    } finally {
+      // @ts-expect-error  `realTimeoutId` is already set in the `spyOn` call
+      clearTimeout(realTimeoutId)
+    }
+  })
 
-    it('resets count for all the keys in the store when the timeout is reached', async () => {
-        const store = new MemoryStore()
-        store.init({ windowMs: min } as Options)
-        const key1 = 'test-resetKey1'
-        const key2 = 'test-resetKey2'
+  // Checks idempotency and safety of store's `init()` method, so calling it twice does not reset the information or cause hiccups on the server
+  it("should automatically clear previously set time intervals", async () => {
+    const store = new MemoryStore()
+    store.init({ windowMs: min } as Options)
+    const previousInterval = store.interval
 
-        await store.inc(key1)
-        await store.inc(key2)
-        jest.advanceTimersByTime(min + 1000)  // 61 seconds later
-        const { totalHits: totalHits1 } = await store.inc(key1) 
-        const { totalHits: totalHits2 } = await store.inc(key2)
-        expect(totalHits1).toEqual(1)
-        expect(totalHits2).toEqual(1)
-    })
+    store.init({ windowMs: min} as Options)    
+    expect(globalThis.clearInterval).toHaveBeenCalledWith(previousInterval)
+  })
 
+  it('', async () => {
+    const store = new MemoryStore()
+    store.init({ windowMs: min} as Options)
 
-    // Touches on a topic called Environment Compatibility (Isomorphic Code)
-    /**
-     * Tests whether the code will crash when run in a web-browser-like environment.
-     * Node.js vs Browser timers behave differently on where the code is running. 
-     * Node.js `setInterval()` returns a `Timeout` instance, which has special methods attached to it. (ex: `.unref()`)
-     * Web browser `setInterval()` returns a simple Number (integer ID) and Numbers do not have said special methods. (ex: no `.unref()`)
-     * Node.js will keep server running forever just to keep the timer alive, So one needs to call `.unref()` to stop them.  
-     * Browsers combine Chromium + Node.js together and developers sometimes bundle backend libraries to run in environments that mimic browsers.
-     * So in all of these environments, `setInterval` returns a Number, not a Node.js object. 
-     * This tests passes because we use `?.` chaining operator to safely prevent calling `.unref()` on a Number.  
-     */
-    it('can run in electron where setInterval does not return a Timeout object with an unset function', async () => {
-        const ogSetInterval = globalThis.setInterval
-        let timeoutId = 1
-        let realTimeoutId: NodeJS.Timer
-        // @ts-expect-error  We want to not return a deprecated Timer instance for testing
-        jest.spyOn(globalThis, 'setTimeout').mockImplementation((callback, timeout) => {
-            realTimeoutId = ogSetInterval(callback, timeout)
-            return timeoutId++
-        })
-        
-        const store = new MemoryStore()
-        store.init({ windowMs: -1 } as Options)
-        const key = 'test-store'
+  })
 
-        try {
-            const { totalHits } = await store.inc(key)
-            expect(totalHits).toEqual(1)
-        } finally {
-            // @ts-expect-error  `realTimeoutId` is already set in the `spyOn` call
-            clearTimeout(realTimeoutId)
-        }
-    })
+  
 })
