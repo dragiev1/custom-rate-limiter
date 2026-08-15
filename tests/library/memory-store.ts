@@ -68,7 +68,7 @@ describe('memory store test', () => {
 
     it('resetKey should remove the key from storage', async () => {
         const store = new MemoryStore()
-        const key = 'test-key'
+        const key = 'test-resetKey'
 
         await store.inc(key)
         let response = await store.get(key)
@@ -81,7 +81,7 @@ describe('memory store test', () => {
 
     it('resets the count for a key in the store when `resetKey` is called', async () => {
         const store = new MemoryStore()
-        const key = 'test-key'
+        const key = 'test-resetKey'
         store.init({ windowMs: min } as Options)
 
         await store.inc(key)
@@ -89,5 +89,32 @@ describe('memory store test', () => {
 
         const totalHits = (await store.inc(key)).totalHits
         expect(totalHits).toEqual(1)
+    })
+
+    it('resets the count for all keys inside store when `resetAll` is used', async () => {
+        const store = new MemoryStore()
+        const key1 = 'test-resetAll'
+        const key2 = 'test-resetAll2'
+        store.init({ windowMs: min } as Options)
+
+        await store.inc(key1)
+        await store.inc(key2)
+        // Check if client rate limit info exists first for both keys 
+        let response1 = await store.get(key1)
+        let response2 = await store.get(key2)
+        expect(response1).toBeDefined()
+        expect(response2).toBeDefined()
+
+        // Reset all and check if they are properly undefined
+        await store.resetAll()
+        response1 = await store.get(key1)
+        response2 = await store.get(key2)
+        expect(response1).toBeUndefined()
+        expect(response2).toBeUndefined()
+    })
+
+    it('', async () => {
+        const store = new MemoryStore()
+        const key = ''
     })
 })
