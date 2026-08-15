@@ -139,4 +139,37 @@ describe('memory store test', () => {
     })
 
 
+    // Touches on a topic called Environment Compatibility (Isomorphic Code)
+    /**
+     * Tests whether the code will crash when run in a web-browser-like environment.
+     * Node.js vs Browser timers behave differently on where the code is running. 
+     * Node.js `setInterval()` returns a `Timeout` instance, which has special methods attached to it. (ex: `.unref()`)
+     * Web browser `setInterval()` returns a simple Number (integer ID) and Numbers do not have said special methods. (ex: no `.unref()`)
+     * Node.js will keep server running forever just to keep the timer alive, So one needs to call `.unref()` to stop them.  
+     * Browsers combine Chromium + Node.js together and developers sometimes bundle backend libraries to run in environments that mimic browsers.
+     * So in all of these environments, `setInterval` returns a Number, not a Node.js object. 
+     * This tests passes because we use `?.` chaining operator to safely prevent calling `.unref()` on a Number.  
+     */
+    it('can run in electron where setInterval does not return a Timeout object with an unset function', async () => {
+        const ogSetInterval = globalThis.setInterval
+        let timeoutId = 1
+        let realTimeoutId: NodeJS.Timer
+        // @ts-expect-error  We want to not return a deprecated Timer instance for testing
+        jest.spyOn(globalThis, 'setTimeout').mockImplementation((callback, timeout) => {
+            realTimeoutId = ogSetInterval(callback, timeout)
+            return timeoutId++
+        })
+        
+        const store = new MemoryStore()
+        store.init({ windowMs: -1 } as Options)
+        const key = 'test-store'
+
+        try {
+            const { totalHits } = await store.inc(key)
+            expect(totalHits).toEqual(1)
+        } finally {
+            // @ts-expect-error  `realTimeoutId` is already set in the `spyOn` call
+            clearTimeout(realTimeoutId)
+        }
+    })
 })
