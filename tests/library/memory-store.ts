@@ -205,5 +205,24 @@ describe("memory store test", () => {
     expect(store.previous.has(key)).toEqual(false)
   })
 
+  it('does not allow client object to be assigned to two keys', async () => {
+    const store = new MemoryStore()
+    const key1 = 'test-key1'
+    const key2 = 'test-key2'
+    store.init({ windowMs: min } as Options)
 
+    await store.inc(key1)
+    jest.advanceTimersByTime(100)
+    await store.inc(key1)
+    await store.inc(key2)
+    let returnValue1 = await store.inc(key1)
+    expect(returnValue1.totalHits).toBe(3)
+
+    const returnValue3 = await store.inc('key3')
+    expect(returnValue1).not.toBe(returnValue3)
+    expect(returnValue3.totalHits).toBe(1)
+
+    returnValue1 = await store.inc(key1)
+    expect(returnValue1.totalHits).toBe(4)  // Should be a 4, 2 would mean there's a reuse bug
+  })
 })
