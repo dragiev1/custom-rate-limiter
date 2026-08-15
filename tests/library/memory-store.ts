@@ -120,7 +120,7 @@ describe('memory store test', () => {
         expect(store.interval).toBeDefined()
 
         store.shutdown()
-        expect(clearInterval).toHaveBeenCalledWith(store.interval)
+        expect(globalThis.clearInterval).toHaveBeenCalledWith(store.interval)
     })
 
     it('resets count for all the keys in the store when the timeout is reached', async () => {
@@ -137,6 +137,6 @@ describe('memory store test', () => {
         expect(totalHits1).toEqual(1)
         expect(totalHits2).toEqual(1)
     })
-    
+
 
 })
