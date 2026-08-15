@@ -187,11 +187,23 @@ describe("memory store test", () => {
     expect(globalThis.clearInterval).toHaveBeenCalledWith(previousInterval)
   })
 
-  it('', async () => {
+  it('should move clients from previous to current', async () => {
     const store = new MemoryStore()
     store.init({ windowMs: min} as Options)
+    const key = 'test-store'
 
+    await store.inc(key)
+    expect(store.current.has(key)).toEqual(true)
+    expect(store.previous.has(key)).toEqual(false)
+
+    jest.advanceTimersByTime(min + 1000)  // 61 seconds later
+    expect(store.current.has(key)).toEqual(false)
+    expect(store.previous.has(key)).toEqual(true)
+
+    await store.inc(key)
+    expect(store.current.has(key)).toEqual(true)
+    expect(store.previous.has(key)).toEqual(false)
   })
 
-  
+
 })
