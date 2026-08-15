@@ -122,4 +122,21 @@ describe('memory store test', () => {
         store.shutdown()
         expect(clearInterval).toHaveBeenCalledWith(store.interval)
     })
+
+    it('resets count for all the keys in the store when the timeout is reached', async () => {
+        const store = new MemoryStore()
+        store.init({ windowMs: min } as Options)
+        const key1 = 'test-resetKey1'
+        const key2 = 'test-resetKey2'
+
+        await store.inc(key1)
+        await store.inc(key2)
+        jest.advanceTimersByTime(min + 1000)  // 61 seconds later
+        const { totalHits: totalHits1 } = await store.inc(key1) 
+        const { totalHits: totalHits2 } = await store.inc(key2)
+        expect(totalHits1).toEqual(1)
+        expect(totalHits2).toEqual(1)
+    })
+    
+
 })
