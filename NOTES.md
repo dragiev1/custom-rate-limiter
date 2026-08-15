@@ -10,7 +10,7 @@ For both my own benefit, and anyone else following along, I will explain the tho
 
 ## Core Rate Limiting Algorithm
 
-I will be using the sliding window counter approach. This is an implementation of the sliding window algorithm which is nice to see in application. 
+I will be using the fixed window counter approach. This is an implementation of the fixed window algorithm which is nice to see in application. 
 It uses the current window's count and a weighted percentage of the previous window's count to estimate a total. This makes it a balanced an accurate algorithm to use, as well as memory efficient. 
 
 
@@ -22,7 +22,7 @@ A custom rate limiter needs four main components from what I understand.
 
 `Storage/State`: Where do we keep track of the request counts, timestamps, or tokens? 
 
-`Logic Engine`: Executing the sliding window algorithm, checks storage, and either allows or denies the request.
+`Logic Engine`: Executing the fixed window algorithm, checks storage, and either allows or denies the request.
 
 `Response Handler`: What happens when a request is denied? 
 
@@ -41,11 +41,59 @@ First, we figure out the identifier: grab user's IP address from the request.
 
 Then, we fetch the current rate limit state for that identifier in storage (Map).
 
-Next, apply the sliding window algorithm to calculate if the request is allowed based on current time and stored state. For example, if they have any hits left before reaching their limit?
+Next, apply the fixed window algorithm to calculate if the request is allowed based on current time and stored state. For example, if they have any hits left before reaching their limit?
 
 If allowed, decrment the counter and update the timestamp in storage. Set an expiration on th storage key to clean up old data.
 
 Finally, pass the request to the main application if allowed, or block and return a `429` response otherwise.
+
+
+## When to Rate Limit? 
+
+The way the algorithm works is by utilizing a technique called the fixed window technique. In the future, I plan to implement other algorithms as an option to the developer using the rate limiter, such as sliding window. 
+The fixed window algorithm essentially is a window of time, looking at the current number of requests sent by each user of the developer's app and keeping track of them throughout the time interval set. 
+
+In the fixed window approach, there are two distinct `Map`s:
+`current` and `previous`. 
+
+Assume the rate limit configuration is every 60 seconds (60000 ms) and the limit of requests per client are 5. We'll assume for now we can confidently keep track of the users by a special ID. 
+
+The first step at `T = 0` seconds. The user `ID = 1` makes a request. The middleware will store this ID along with the current amount of requests they have made. It'll look something like:
+`info = { ID: 1, hits: 1 }` 
+
+Continuing from the initial request at `T = 0`, the `current` and `previous` maps will right away check if this user has been accounted for before within the set time interval (60s). Both will see there is no user with such ID, so they miss. 
+
+Then, the algorithm will create a special object called `Client` and store the total number of requests of this user made within the set time window, along with the expiration date of this object to say when to reset this user's recorded hit count. Said object would look something like this: 
++ `Client = { totalHits: 0, resetTime: Date.now() + 60000 }`
+
+Next, still at `T = 0`, we place the `Client` object into the `current` map and increment the total hits to 1.
+
+Lastly, the middleware checks the total hits to the limit set and decides whether or not to block the request. 
++ `1 < 5` => allow the request through.
+
+But, now `T = 10`, so user `ID = 1` makes a second, third, and fourth request. For each request, the storage checks `current` and finds the `Client` object matching the ID and immediately checks the expiration date. 
++ `if (Date.now() <= client.resetTime)` 
+
+Since `T = 10 < 60`, then the total hits for that user increments respectively for each request within the window: `totalHits = 4`.
+
+The timer then reached `T = 30` seconds. The same user makes another request, marking requests number 5 within the time interval of 60 seconds: `totalHits = 5`. This is still fine, the limit is less than or equal to 5, so this request passes. 
+
+Although, at `T = 50` seconds, the same user makes another request yet again. The algorithm checks `current` and finds the `Client` object with a total of 5 hits already. It then realizes that `5 < 6` and sees that the user exceeded the maximum number of requests within 60 seconds. The middleware then blocks that user, sending a `429: too many requests` status code and message. 
+
+Once the server reaches `T = 61` seconds, the `current` map becomes old or "expired." The same user makes request #7 and the algorthm finds the `Client` object inside `current`. It checks the expiration of the object and realizes that it expired: `T = 61 > 60`!
+
+The code then resets the client object, total hits become 0 and the reset time because the time now plus 60 seconds: `Client = { totalHits: 0, resetTime: Date.now() + 60000 }`. Total hits increments as follows and the middleware sees that, then allows the request. 
+
+The cycle restarts.
+
+However, where does the `previous` map play into this? When the interval exceeds the set window, all of the client objects found inside `current` get forced into `previous`. So actually, at `T = 61`, `Client` object from before would **not** be in `current`, but instead `previous`.
+
+The swap then creates a brand new empty `current` map for the next interval: `T = 60 -> T = 119`.
+
+This is an amazing algorithm because if the user never makes another request, they sit inside `previous` for one window cycle. At the end of that cycle, the old `previous` map gets overwritten by the new `current` map! So effectively, our user is wiped from memory and the server didn't ever have to run slow checks for expired client objects! If the user does eventually come back later, it doesn't matter as they are well past expiration and have a clean slate of requests to make. 
+
+*Additional notes: if we wanted to implement a sliding window algorithm instead, we need to struture the `Client` object to store an array of timestamps. So we would filter the array and then check the size of it to get the total requests made by that user. But this will be implemented after fixed window is complete.* 
+
 
 ## Challenge: Remembering a Specific Client
 
@@ -233,7 +281,7 @@ At this point, we have a semi-advanced rate limiter! Although, one thing we want
 
 There are plenty of tools to use in the Node.js ecosystem, some examples being `Mocha`, `Vitest`, `Ava`, and `Jest`. Which one is best for our needs, however? 
 
-Since our middleware revolves around a time interval, or "sliding window," which is a core component in our rate limiter, this tells us that we want to use a testing tool which has a built-in fake timer system. `Jest` has exactly that! 
+Since our middleware revolves around a time interval, or "fixed window," which is a core component in our rate limiter, this tells us that we want to use a testing tool which has a built-in fake timer system. `Jest` has exactly that! 
 
 Jest allows us to *freeze* time, make requests, and instantly fast-forward the clock to simulate the expiration of a window with its `useFakeTimers()` object. In addition, we do not want to connect this to a real database just for testing purposes. As in a production environment, the `Store` could be a Redis or PostgreSQL database. This would be unnecessarily complicated and resource intensive. A solution is to use Jest's built-in mocking system to create a `MockStore` class, in which implements the `Store` interface and using a simple JavaScript `Map` or object. On top of that, Jest has "spying" capabilities that allow us to spy on methods to verify their intentional or unintentional behaviors. 
 

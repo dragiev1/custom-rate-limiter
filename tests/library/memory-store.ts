@@ -2,6 +2,7 @@
 import { describe, beforeEach, afterEach, jest, it, expect } from '@jest/globals'
 import { MemoryStore } from '../../src/memory-store'
 import { Options } from '../../src/types'
+import { clearInterval } from 'node:timers'
 
 const min = 60 * 1000
 
@@ -113,8 +114,12 @@ describe('memory store test', () => {
         expect(response2).toBeUndefined()
     })
 
-    it('', async () => {
+    it('clears the timer when `shutdown` is called', async () => {
         const store = new MemoryStore()
-        const key = ''
+        store.init({ windowMs: min } as Options)
+        expect(store.interval).toBeDefined()
+
+        store.shutdown()
+        expect(clearInterval).toHaveBeenCalledWith(store.interval)
     })
 })
