@@ -93,5 +93,28 @@ describe('validation tests', () => {
         })
     })
 
-    
+    describe('forwardedHeader', () => {
+        // Simulates a normal non proxy direct request; raw client IP
+        it('should not log an error when the forwarded header is unset', () => {
+            validations.forwardedHeader({
+                headers: {},
+                ip: '1.2.3.4',
+                // Remote address is the IP address of the machine that made the direct TCP connection to the server
+                socket: { remoteAddress: '1.2.3.4' },
+            } as any)
+            expect(logger.error).not.toHaveBeenCalled()
+        })
+
+        // Simulates a suspicious proxy directed request; forwarded ip is spoofed and by an untrusted header, thus must be blocked
+        it('should log an error when the forwarded header is set', () => {
+            validations.forwardedHeader({
+                headers: { forwarded: '1.1.1.1' },
+                ip: '1.2.3.4',
+                socket: { remoteAddress: '1.2.3.4' },
+            } as any)
+            expect(logger.error).toHaveBeenCalledWith(
+                expect.objectContaining({ code: 'CRL_ERR_FORWARDED_HEADER' })
+            )
+        })
+    })
 })
