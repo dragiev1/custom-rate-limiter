@@ -76,12 +76,22 @@ describe('validation tests', () => {
             [{'x-forwarded-for': '1.2.3.4'}, true],
             [{}, false],
             [{}, true],
-        ])('should log an error with x-forwarded-for header and "trust proxy" is false', (headers, trustProxy) => {
+        ])('should log an error with x-forwarded-for header and "trust proxy" is %s', (headers, trustProxy) => {
             validations.xForwardedForHeader({
                 app: { get: () => trustProxy},
                 headers,
             } as any)
             expect(logger.error).not.toHaveBeenCalled()
         })
+
+        it('should log an error with x-forwarded-for header and "trust proxy" is false', () => {
+            validations.xForwardedForHeader({
+                app: { get: () => false },
+                headers: { 'x-forwarded-for': '1.2.3.4'},
+            } as any)
+            expect(logger.error).toHaveBeenCalled()
+        })
     })
+
+    
 })
