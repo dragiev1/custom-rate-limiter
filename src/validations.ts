@@ -3,7 +3,6 @@ import { isIP } from "node:net";
 import type { Request } from "express";
 import { SUPPORTED_DRAFT_VERSIONS } from "./headers";
 import { EnabledValidations, Logger, Options, Store, ValueDeterminingMiddleware } from "./types";
-import { enableCompileCache } from "node:module";
 
 class ValidationError extends Error {
   name: string;
@@ -28,7 +27,7 @@ const usedStores = new Set<Store>();
  * not used more than once per request.
  * The store can either be an instance (like MemoryStore where two instances do not share state)
  * or a string for stores where multiple instances typically share states (like a Redis store).
- * Check documentation for more information.
+ * Check NOTES.md for more information.
  */
 const singleCountKeys = new WeakMap<Request, Map<Store | string, string[]>>();
 
@@ -39,7 +38,7 @@ const validations = {
     default: true,
   } as { [key: string]: boolean },
 
-  // Method for disabling validations, not very recommended
+  // Method for disabling validations, not recommended
   disable() {
     for (const k of Object.keys(this.enabled)) this.enabled[k] = false;
   },

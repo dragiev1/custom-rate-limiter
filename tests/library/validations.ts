@@ -373,5 +373,46 @@ describe("validation tests", () => {
     })
   })
 
-  
+  describe('validationsConfig', () => {
+    it('should log an error if an unknown validation is disabled', () => {
+        validations = getValidations({ invalid: false } as any, logger)
+        validations.validationsConfig()
+        expect(logger.error).toHaveBeenCalled()
+    })
+
+    it('should log an error if an unknown validation is enabled', () => {
+        validations = getValidations({ invalid: true } as any, logger)
+        validations.validationsConfig()
+        expect(logger.error).toHaveBeenCalled()
+    })
+
+    it('should not run validations if disabled by config', () => {
+        // Lay a trap; invalid is a known invalid option, so logger shouldn't error if `validationsConfig=false` and works properly
+        validations = getValidations({ invalid: false, validationsConfig: false } as any, logger)
+        validations.validationsConfig()
+        expect(logger.error).not.toHaveBeenCalled()
+    })
+
+    it('should not run validations if disabled by default', () => {
+        validations = getValidations({ invalid: false, default: false } as any, logger)
+        validations.validationsConfig()
+        expect(logger.error).not.toHaveBeenCalled()
+    })
+
+    it('should run validations if enabled by config with default is false', () => {
+        validations = getValidations({
+            invalid: false,
+            validationsConfig: true,
+            default: false,
+        } as any, logger)
+        validations.validationsConfig()
+        expect(logger.error).toHaveBeenCalledWith(
+            expect.objectContaining({
+                code: 'CRL_ERR_UNKNOWN_VALIDATION'
+            })
+        )
+    })
+  })
+
+
 })
