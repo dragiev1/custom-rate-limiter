@@ -302,7 +302,26 @@ describe("validation tests", () => {
     })
   })
 
-  describe('', () => {
+  describe('headersDraftVersion', () => {
+    it('should log an error if standardHeaders version provided is not supported', () => {
+        const version = 'draft-5'
+        
+        validations.headersDraftVersion(version)
+        expect(logger.error).toHaveBeenCalledWith(
+            expect.objectContaining({
+                code: 'CRL_ERR_HEADERS_UNSUPPORTED_DRAFT_VERSION',
+            })
+        )
+    })
 
+    it.each(
+        ['draft-6',
+        'draft-7',
+        'draft-8',
+    ])('should not log an error for standardHeaders version %s is supported', (version) => {
+        validations.headersDraftVersion(version)
+        expect(logger.error).not.toHaveBeenCalled()
+        expect(logger.warn).not.toHaveBeenCalled()
+    })
   })
 })
