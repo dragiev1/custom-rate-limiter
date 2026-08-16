@@ -1,7 +1,7 @@
 // Testing validation.ts for strict configuration rules
 import { it, beforeEach, afterEach, jest, describe, expect } from '@jest/globals'
 import { getValidations, Validations } from '../../src/validations'
-import { Logger } from '../../src/types'
+import { Logger, Store } from '../../src/types'
 
 describe('validation tests', () => {
     let validations: Validations
@@ -154,5 +154,50 @@ describe('validation tests', () => {
         })
     })
 
-    
+    describe('uniqueStorePerLimiter', () => {
+        let validations2: Validations
+
+        beforeEach(() => {
+            // Make a second instance
+            validations2 = getValidations(true, logger)
+        })
+
+        it('should log an error if a store instance is used in two limiters', () => {
+            const store = { localKeys: true }  // Keys incremented only effects that instance and not multiple
+
+            validations.uniqueStorePerLimiter(store as Store)
+            expect(logger.error).not.toHaveBeenCalled()
+
+            validations2.uniqueStorePerLimiter(store as Store)
+            expect(logger.error).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    code: 'CRL_ERR_STORE_REUSE',
+                }),
+            )
+        })
+
+        it('should log a different error for stores without localKeys set to true', () => {
+            const store = { localKeys: false }
+
+            validations.uniqueStorePerLimiter(store as Store)
+            expect(logger.error).not.toHaveBeenCalled()
+
+            validations2.uniqueStorePerLimiter(store as Store)
+            expect(logger.error).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    code: 'CRL_ERR_STORE_REUSE',
+                    message: expect.stringContaining('unique prefix'),
+                })
+            )
+        })
+
+        it('should not log an error if multiple store instances are used', () => {
+            const store1 = { localKeys: true }
+            const store2 = { localKeys: true }
+
+            validations.uniqueStorePerLimiter(store1 as Store)
+            validations.uniqueStorePerLimiter(store2 as Store)
+            expect(logger.error).not.toHaveBeenCalled()
+        })
+    })
 })
