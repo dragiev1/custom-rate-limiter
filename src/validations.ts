@@ -192,7 +192,6 @@ const validations = {
     };
 
     const validOptions = Object.keys(optionsMap).concat(
-      "draft_polli_ratelimit_headers",
       "delayAfter",
       "delayMs",
       "maxDelayMs",

@@ -337,5 +337,41 @@ describe("validation tests", () => {
     })
   }) 
 
+  describe('knownOptions', () => {
+    it('should log an error if an unkown option is passed in', () => {
+        validations.knownOptions({ maxDelay: 100 } as any)
+        expect(logger.error).toHaveBeenCalledWith(
+            expect.objectContaining({
+                code: 'CRL_ERR_UNKNOWN_OPTION_IN_CONFIG',
+            })
+        )
+    })
+
+    it.each([
+        { windowMs: 199},
+        { limit: 10 },
+        { message: 'test' },
+        { statusCode: 300 },
+        { requestPropertyName: 'test-name'},
+        { legacyHeaders: true },
+        { standardHeaders: 'draft-6' },
+        { identifier: '' },
+        { skipFailedRequests: true },
+        { skipSuccessfulRequests: true },
+        { skip: true },
+        { keyGen: () => 10 },
+        { handler: () => true },
+        { reqSuccessful: () => true },
+        { passOnStoreError: true },
+        { store: undefined },
+        { validate: true },
+        { logger: undefined },
+        { ipv6Subnet: 56 },
+    ])('should not log an error with %s option passed in', (option) => {
+        validations.knownOptions(option as any)
+        expect(logger.error).not.toHaveBeenCalled()
+    })
+  })
+
   
 })
