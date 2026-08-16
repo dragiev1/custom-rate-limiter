@@ -106,7 +106,7 @@ describe('validation tests', () => {
             expect(logger.error).not.toHaveBeenCalled()
         })
 
-        // Simulates a suspicious proxy directed request; forwarded ip is spoofed and by an untrusted header, thus must be blocked
+        // Simulates a suspicious proxy directed request; forwarded ip is spoofed and by an untrusted header, thus must be ignored and look at just the `req.ip`
         it('should log an error when the forwarded header is set', () => {
             validations.forwardedHeader({
                 headers: { forwarded: '1.1.1.1' },
@@ -129,7 +129,30 @@ describe('validation tests', () => {
         })
     })
 
-    describe('', () => {
+    describe('positiveHits', () => {
+        it('should log an error if hits is non-numeric', () => {
+            validations.positiveHits(true)
+            expect(logger.error).toHaveBeenCalled()
+        })
 
+        it('should log an error if hits is <1', () => {
+            validations.positiveHits(-1)
+            expect(logger.error).toHaveBeenCalled()
+
+            validations.positiveHits(0)
+            expect(logger.error).toHaveBeenCalled()
+        })
+
+        it('should log an error if hits is not an integer', () => {
+            validations.positiveHits('0')
+            expect(logger.error).toHaveBeenCalled()
+        })
+
+        it('should not log an error if hits is a positive integer', () => {
+            validations.positiveHits(1)
+            expect(logger.error).not.toHaveBeenCalled()
+        })
     })
+
+    
 })
