@@ -274,7 +274,35 @@ describe("validation tests", () => {
             })
         )
     })
+
+    it('should not log an error for multiple requests from the same key', () => {
+        const req1 = {}
+        const req2 = {}
+        const store = { localKeys: true }
+        const key = '1.1.1.1'
+
+        validations.singleCount(req1 as any, store as Store, key)
+        expect(logger.error).not.toHaveBeenCalled()
+        validations2.singleCount(req2 as any, store as Store, key)
+        expect(logger.error).not.toHaveBeenCalled()
+    })
+
+    it('should not log an error if a request is double-counted with separate instances of an external store with different prefixes', () => {
+        const req = {}
+        const store1 = new TestExternalStore()
+        store1.prefix = 's1'
+        const store2 = new TestExternalStore()
+        store2.prefix = 's2'
+        const key = '1.2.3.4'
+
+        validations.singleCount(req as any, store1 as Store, key)
+        expect(logger.error).not.toHaveBeenCalled()
+        validations.singleCount(req as any, store2 as Store, key)
+        expect(logger.error).not.toHaveBeenCalled()
+    })
   })
 
-  
+  describe('', () => {
+
+  })
 })
