@@ -324,4 +324,18 @@ describe("validation tests", () => {
         expect(logger.warn).not.toHaveBeenCalled()
     })
   })
+
+  describe('headersResetTime', () => {
+    it('should log an error if resetTime is not provided', () => {
+        validations.headersResetTime(undefined)
+        expect(logger.error).toHaveBeenCalled()
+    })
+
+    it('should not log an error if resetTime is provided', () => {
+        validations.headersResetTime(new Date())
+        expect(logger.error).not.toHaveBeenCalled()
+    })
+  }) 
+
+  
 })
