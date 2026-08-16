@@ -54,5 +54,34 @@ describe('validation tests', () => {
         })
     })
 
+    describe('trustProxy', () => {
+        it('should log an error on "trust proxy" set to true', () => {
+            validations.trustProxy({app: {get: () => true}} as any)  // Mock object that returns get true function to turn on trustProxy
+            expect(logger.error).toHaveBeenCalled()  // Should error because trustProxy is bad, read commments in src/validations.ts for more information
+        })
 
+        it.each([
+            false,
+            '1.2.3.4',
+            /1.2.3.4/,
+            ['1.2.3.4'],
+        ])('should not log an error on "trust proxy" = %s', (val) => {
+            validations.trustProxy({ app: {get: () => val }} as any)
+            expect(logger.error).not.toHaveBeenCalled()
+        })
+    })
+
+    describe('xForwardedFor', () => {
+        it.each([
+            [{'x-forwarded-for': '1.2.3.4'}, true],
+            [{}, false],
+            [{}, true],
+        ])('should log an error with x-forwarded-for header and "trust proxy" is false', (headers, trustProxy) => {
+            validations.xForwardedForHeader({
+                app: { get: () => trustProxy},
+                headers,
+            } as any)
+            expect(logger.error).not.toHaveBeenCalled()
+        })
+    })
 })
