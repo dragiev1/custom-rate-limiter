@@ -96,6 +96,7 @@ describe('validation tests', () => {
     describe('forwardedHeader', () => {
         // Simulates a normal non proxy direct request; raw client IP
         it('should not log an error when the forwarded header is unset', () => {
+            // Passing in a fake request object
             validations.forwardedHeader({
                 headers: {},
                 ip: '1.2.3.4',
@@ -116,5 +117,19 @@ describe('validation tests', () => {
                 expect.objectContaining({ code: 'CRL_ERR_FORWARDED_HEADER' })
             )
         })
+
+        // Heuristic test for when a forwarded header is present, but Express's `req.ip` looks like the raw socket IP
+        it('should not log an error when `req.ip` has been set to a non-default value', () => {
+            validations.forwardedHeader({
+                headers: { forwarded: '1.1.1.1'},
+                ip: '1.1.1.100',
+                socket: { remoteAddress: '1.1.1.2'}
+            } as any)
+            expect(logger.error).not.toHaveBeenCalled()
+        })
+    })
+
+    describe('', () => {
+
     })
 })
