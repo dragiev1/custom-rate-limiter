@@ -414,5 +414,18 @@ describe("validation tests", () => {
     })
   })
 
+  describe('disable', () => {
+    it('should initialize disabled when passed false', () => {
+        const disabledValidator = getValidations(false, logger)
+        disabledValidator.ip('badip')
+        expect(logger.error).not.toHaveBeenCalled()
+    })
+
+    it('should do nothing after `disable() is called`', () => {
+        validations.disable()
+        validations.ip('badip')
+        expect(logger.error).not.toHaveBeenCalled()
+    })
+  })
 
 })
