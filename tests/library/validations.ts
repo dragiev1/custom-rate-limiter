@@ -2,13 +2,15 @@
 import {
   it,
   beforeEach,
-  afterEach,
   jest,
   describe,
   expect,
 } from "@jest/globals"
 import { getValidations, Validations } from "../../src/validations"
 import { Logger, Store } from "../../src/types"
+import { MemoryStore } from '../../src/memory-store'
+import express from 'express'
+import supertest from "supertest"
 
 describe("validation tests", () => {
   let validations: Validations
@@ -21,6 +23,20 @@ describe("validation tests", () => {
     }
 
     validations = getValidations(true, logger)
+  })
+
+  describe("disable", () => {
+    it("should initialize disabled when passed false", () => {
+      const disabledValidator = getValidations(false, logger)
+      disabledValidator.ip("badip")
+      expect(logger.error).not.toHaveBeenCalled()
+    })
+
+    it("should do nothing after `disable() is called`", () => {
+      validations.disable()
+      validations.ip("badip")
+      expect(logger.error).not.toHaveBeenCalled()
+    })
   })
 
   describe("ip", () => {
@@ -245,187 +261,233 @@ describe("validation tests", () => {
       expect(logger.error).not.toHaveBeenCalled()
     })
 
-    it('should log an error if a request is double-counted with an external store', () => {
-        const req = {}
-        const store = new TestExternalStore()
-        const key = '1.2.3.4'
+    it("should log an error if a request is double-counted with an external store", () => {
+      const req = {}
+      const store = new TestExternalStore()
+      const key = "1.2.3.4"
 
-        validations.singleCount(req as any, store as Store, key)
-        expect(logger.error).not.toHaveBeenCalled()
-        validations2.singleCount(req as any, store as Store, key)
-        expect(logger.error).toHaveBeenCalledWith(
-            expect.objectContaining({
-                code: 'CRL_ERR_DOUBLE_COUNT',
-            })
-        )
+      validations.singleCount(req as any, store as Store, key)
+      expect(logger.error).not.toHaveBeenCalled()
+      validations2.singleCount(req as any, store as Store, key)
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: "CRL_ERR_DOUBLE_COUNT",
+        }),
+      )
     })
 
-    it('should log an error if a request is double-counted with separate instances of an external store', () => {
-        const req = {}
-        const store1 = new TestExternalStore()
-        const store2 = new TestExternalStore()
-        const key = '1.2.3.4'
+    it("should log an error if a request is double-counted with separate instances of an external store", () => {
+      const req = {}
+      const store1 = new TestExternalStore()
+      const store2 = new TestExternalStore()
+      const key = "1.2.3.4"
 
-        validations.singleCount(req as any, store1 as Store, key)
-        validations2.singleCount(req as any, store2 as Store, key)
-        expect(logger.error).toHaveBeenCalledWith(
-            expect.objectContaining({
-                code: 'CRL_ERR_DOUBLE_COUNT'
-            })
-        )
+      validations.singleCount(req as any, store1 as Store, key)
+      validations2.singleCount(req as any, store2 as Store, key)
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: "CRL_ERR_DOUBLE_COUNT",
+        }),
+      )
     })
 
-    it('should not log an error for multiple requests from the same key', () => {
-        const req1 = {}
-        const req2 = {}
-        const store = { localKeys: true }
-        const key = '1.1.1.1'
+    it("should not log an error for multiple requests from the same key", () => {
+      const req1 = {}
+      const req2 = {}
+      const store = { localKeys: true }
+      const key = "1.1.1.1"
 
-        validations.singleCount(req1 as any, store as Store, key)
-        expect(logger.error).not.toHaveBeenCalled()
-        validations2.singleCount(req2 as any, store as Store, key)
-        expect(logger.error).not.toHaveBeenCalled()
+      validations.singleCount(req1 as any, store as Store, key)
+      expect(logger.error).not.toHaveBeenCalled()
+      validations2.singleCount(req2 as any, store as Store, key)
+      expect(logger.error).not.toHaveBeenCalled()
     })
 
-    it('should not log an error if a request is double-counted with separate instances of an external store with different prefixes', () => {
-        const req = {}
-        const store1 = new TestExternalStore()
-        store1.prefix = 's1'
-        const store2 = new TestExternalStore()
-        store2.prefix = 's2'
-        const key = '1.2.3.4'
+    it("should not log an error if a request is double-counted with separate instances of an external store with different prefixes", () => {
+      const req = {}
+      const store1 = new TestExternalStore()
+      store1.prefix = "s1"
+      const store2 = new TestExternalStore()
+      store2.prefix = "s2"
+      const key = "1.2.3.4"
 
-        validations.singleCount(req as any, store1 as Store, key)
-        expect(logger.error).not.toHaveBeenCalled()
-        validations.singleCount(req as any, store2 as Store, key)
-        expect(logger.error).not.toHaveBeenCalled()
+      validations.singleCount(req as any, store1 as Store, key)
+      expect(logger.error).not.toHaveBeenCalled()
+      validations.singleCount(req as any, store2 as Store, key)
+      expect(logger.error).not.toHaveBeenCalled()
     })
   })
 
-  describe('headersDraftVersion', () => {
-    it('should log an error if standardHeaders version provided is not supported', () => {
-        const version = 'draft-5'
-        
-        validations.headersDraftVersion(version)
-        expect(logger.error).toHaveBeenCalledWith(
-            expect.objectContaining({
-                code: 'CRL_ERR_HEADERS_UNSUPPORTED_DRAFT_VERSION',
-            })
-        )
+  describe("headersDraftVersion", () => {
+    it("should log an error if standardHeaders version provided is not supported", () => {
+      const version = "draft-5"
+
+      validations.headersDraftVersion(version)
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: "CRL_ERR_HEADERS_UNSUPPORTED_DRAFT_VERSION",
+        }),
+      )
     })
 
-    it.each(
-        ['draft-6',
-        'draft-7',
-        'draft-8',
-    ])('should not log an error for standardHeaders version %s is supported', (version) => {
+    it.each(["draft-6", "draft-7", "draft-8"])(
+      "should not log an error for standardHeaders version %s is supported",
+      (version) => {
         validations.headersDraftVersion(version)
+        expect(logger.error).not.toHaveBeenCalled()
+        expect(logger.warn).not.toHaveBeenCalled()
+      },
+    )
+  })
+
+  describe("headersResetTime", () => {
+    it("should log an error if resetTime is not provided", () => {
+      validations.headersResetTime(undefined)
+      expect(logger.error).toHaveBeenCalled()
+    })
+
+    it("should not log an error if resetTime is provided", () => {
+      validations.headersResetTime(new Date())
+      expect(logger.error).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("knownOptions", () => {
+    it("should log an error if an unkown option is passed in", () => {
+      validations.knownOptions({ maxDelay: 100 } as any)
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: "CRL_ERR_UNKNOWN_OPTION_IN_CONFIG",
+        }),
+      )
+    })
+
+    it.each([
+      { windowMs: 199 },
+      { limit: 10 },
+      { message: "test" },
+      { statusCode: 300 },
+      { requestPropertyName: "test-name" },
+      { legacyHeaders: true },
+      { standardHeaders: "draft-6" },
+      { identifier: "" },
+      { skipFailedRequests: true },
+      { skipSuccessfulRequests: true },
+      { skip: true },
+      { keyGen: () => 10 },
+      { handler: () => true },
+      { reqSuccessful: () => true },
+      { passOnStoreError: true },
+      { store: undefined },
+      { validate: true },
+      { logger: undefined },
+      { ipv6Subnet: 56 },
+    ])("should not log an error with %s option passed in", (option) => {
+      validations.knownOptions(option as any)
+      expect(logger.error).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("validationsConfig", () => {
+    it("should log an error if an unknown validation is disabled", () => {
+      validations = getValidations({ invalid: false } as any, logger)
+      validations.validationsConfig()
+      expect(logger.error).toHaveBeenCalled()
+    })
+
+    it("should log an error if an unknown validation is enabled", () => {
+      validations = getValidations({ invalid: true } as any, logger)
+      validations.validationsConfig()
+      expect(logger.error).toHaveBeenCalled()
+    })
+
+    it("should not run validations if disabled by config", () => {
+      // Lay a trap invalid is a known invalid option, so logger shouldn't error if `validationsConfig=false` and works properly
+      validations = getValidations(
+        { invalid: false, validationsConfig: false } as any,
+        logger,
+      )
+      validations.validationsConfig()
+      expect(logger.error).not.toHaveBeenCalled()
+    })
+
+    it("should not run validations if disabled by default", () => {
+      validations = getValidations(
+        { invalid: false, default: false } as any,
+        logger,
+      )
+      validations.validationsConfig()
+      expect(logger.error).not.toHaveBeenCalled()
+    })
+
+    it("should run validations if enabled by config with default is false", () => {
+      validations = getValidations(
+        {
+          invalid: false,
+          validationsConfig: true,
+          default: false,
+        } as any,
+        logger,
+      )
+      validations.validationsConfig()
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: "CRL_ERR_UNKNOWN_VALIDATION",
+        }),
+      )
+    })
+  })
+
+  describe('creationStack', () => {
+    it('should log an error if called in an express request handler with a memory store', async () => {
+        // Whip up basic express app and memory store to use
+        const app = express()
+        const store = new MemoryStore()
+
+        // Make a get API to the mock app and initialize the store by using the `creationStack` method,
+        // so the store gets created internally in the request
+        app.get('/', (_req, res) => {
+            validations.creationStack(store)
+            res.send('hello')
+        })
+
+        // Make a request to the app using supertest and we expect a valid response
+        await supertest(app).get('/').expect('hello')
+        // But we do not want the ability to create memory stores inside of requests as that could be dangerous
+        expect(logger.error).toHaveBeenCalledWith(
+            expect.objectContaining({
+                code: 'CRL_ERR_CREATED_IN_REQUEST_HANDLER',
+                message: expect.stringContaining('instance should be created at app init')
+            })
+        )
+        expect(logger.warn).not.toHaveBeenCalled()
+    })
+
+    it('should log a different error when used with an external store', async () => {
+        const app = express()
+        const store: Store = { localKeys: false } as any  // i.e. Redis database async/await needed
+
+        app.get('/', (_req, res) => {
+            validations.creationStack(store)
+            res.send('hello')
+        })
+
+        await supertest(app).get('/').expect('hello')
+        expect(logger.error).toHaveBeenCalledWith(
+            expect.objectContaining({
+                code: 'CRL_ERR_CREATED_IN_REQUEST_HANDLER',
+                message: expect.stringContaining('when responding to a request')
+            })
+        )
+        expect(logger.warn).not.toHaveBeenCalled()
+    })
+
+    it('should not log an error if called anywhere else', () => {
+        const store = new MemoryStore()
+
+        validations.creationStack(store)
         expect(logger.error).not.toHaveBeenCalled()
         expect(logger.warn).not.toHaveBeenCalled()
     })
   })
-
-  describe('headersResetTime', () => {
-    it('should log an error if resetTime is not provided', () => {
-        validations.headersResetTime(undefined)
-        expect(logger.error).toHaveBeenCalled()
-    })
-
-    it('should not log an error if resetTime is provided', () => {
-        validations.headersResetTime(new Date())
-        expect(logger.error).not.toHaveBeenCalled()
-    })
-  }) 
-
-  describe('knownOptions', () => {
-    it('should log an error if an unkown option is passed in', () => {
-        validations.knownOptions({ maxDelay: 100 } as any)
-        expect(logger.error).toHaveBeenCalledWith(
-            expect.objectContaining({
-                code: 'CRL_ERR_UNKNOWN_OPTION_IN_CONFIG',
-            })
-        )
-    })
-
-    it.each([
-        { windowMs: 199},
-        { limit: 10 },
-        { message: 'test' },
-        { statusCode: 300 },
-        { requestPropertyName: 'test-name'},
-        { legacyHeaders: true },
-        { standardHeaders: 'draft-6' },
-        { identifier: '' },
-        { skipFailedRequests: true },
-        { skipSuccessfulRequests: true },
-        { skip: true },
-        { keyGen: () => 10 },
-        { handler: () => true },
-        { reqSuccessful: () => true },
-        { passOnStoreError: true },
-        { store: undefined },
-        { validate: true },
-        { logger: undefined },
-        { ipv6Subnet: 56 },
-    ])('should not log an error with %s option passed in', (option) => {
-        validations.knownOptions(option as any)
-        expect(logger.error).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('validationsConfig', () => {
-    it('should log an error if an unknown validation is disabled', () => {
-        validations = getValidations({ invalid: false } as any, logger)
-        validations.validationsConfig()
-        expect(logger.error).toHaveBeenCalled()
-    })
-
-    it('should log an error if an unknown validation is enabled', () => {
-        validations = getValidations({ invalid: true } as any, logger)
-        validations.validationsConfig()
-        expect(logger.error).toHaveBeenCalled()
-    })
-
-    it('should not run validations if disabled by config', () => {
-        // Lay a trap; invalid is a known invalid option, so logger shouldn't error if `validationsConfig=false` and works properly
-        validations = getValidations({ invalid: false, validationsConfig: false } as any, logger)
-        validations.validationsConfig()
-        expect(logger.error).not.toHaveBeenCalled()
-    })
-
-    it('should not run validations if disabled by default', () => {
-        validations = getValidations({ invalid: false, default: false } as any, logger)
-        validations.validationsConfig()
-        expect(logger.error).not.toHaveBeenCalled()
-    })
-
-    it('should run validations if enabled by config with default is false', () => {
-        validations = getValidations({
-            invalid: false,
-            validationsConfig: true,
-            default: false,
-        } as any, logger)
-        validations.validationsConfig()
-        expect(logger.error).toHaveBeenCalledWith(
-            expect.objectContaining({
-                code: 'CRL_ERR_UNKNOWN_VALIDATION'
-            })
-        )
-    })
-  })
-
-  describe('disable', () => {
-    it('should initialize disabled when passed false', () => {
-        const disabledValidator = getValidations(false, logger)
-        disabledValidator.ip('badip')
-        expect(logger.error).not.toHaveBeenCalled()
-    })
-
-    it('should do nothing after `disable() is called`', () => {
-        validations.disable()
-        validations.ip('badip')
-        expect(logger.error).not.toHaveBeenCalled()
-    })
-  })
-
 })
