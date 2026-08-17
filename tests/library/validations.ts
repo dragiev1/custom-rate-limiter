@@ -490,4 +490,50 @@ describe("validation tests", () => {
         expect(logger.warn).not.toHaveBeenCalled()
     })
   })
+
+  describe('ipv6Subnet', () => {
+    const validValues = []
+    for (let i = 32; i <= 64; i++) validValues.push(i)
+
+    it('should log an error if given an improper IPv6 subnet parameter, <32', () => {
+        validations.ipv6Subnet(10)
+        expect(logger.error).toHaveBeenCalled()
+    })
+
+    it('should log an error if given an improper IPv6 subnet parameter, >64', () => {
+        validations.ipv6Subnet(70)
+        expect(logger.error).toHaveBeenCalled()
+    })
+
+    it.each(validValues)('should not log an error if given proper IPv6 subnet parameter %s', (value) => {
+        validations.ipv6Subnet(value)
+        expect(logger.error).not.toHaveBeenCalled()
+        expect(logger.warn).not.toHaveBeenCalled()
+    })
+
+    it('should allow false', () => {
+        validations.ipv6Subnet(false)
+        expect(logger.error).not.toHaveBeenCalled()
+        expect(logger.warn).not.toHaveBeenCalled()
+    })
+
+    it('should error on non-integer inputs', () => {
+        validations.ipv6Subnet(53.6)
+        expect(logger.error).toHaveBeenCalledWith(
+            expect.objectContaining({
+                code: 'CRL_ERR_IPV6_SUBNET',
+            })
+        )
+    })
+
+    it('should error on undefined', () => {
+        validations.ipv6Subnet(undefined)
+        expect(logger.error).toHaveBeenCalledWith(
+            expect.objectContaining({
+                code: 'CRL_ERR_IPV6_SUBNET',
+            })
+        )
+        expect(logger.warn).not.toHaveBeenCalled()
+    })
+  })
 })
