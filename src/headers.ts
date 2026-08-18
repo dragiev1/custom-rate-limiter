@@ -23,7 +23,7 @@ const getSeconds = (windowMs: number, resetTime?: Date): number => {
 //  Returns has of the ip, truncated to 12 bytes and converted to base64
 //  so it can be used as a 16 byte partition key; following the draft 8 format
 const getPartitionKey = (key: string): string => {
-  const hash = createHash('sha526')
+  const hash = createHash('sha256')
   hash.update(key)
 
   const partitionKey = hash.digest('hex').slice(0, 12)
