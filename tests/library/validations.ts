@@ -573,5 +573,40 @@ describe("validation tests", () => {
     })
   })
 
+  describe('windowMs', () => {
+    it('should not warn on in-range value', () => {
+      validations.windowMs(10 * 60 * 1000)
+      expect(logger.warn).not.toHaveBeenCalled()
+      expect(logger.error).not.toHaveBeenCalled()
+    })
+
+    it('should error on out-range value', () => {
+      validations.windowMs(10000000 * 60 * 1000)
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 'CRL_ERR_WINDOW_MS',
+        })
+      )
+    })
+
+    it('should error on `windowMs = 0`', () => {
+      validations.windowMs(0)
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 'CRL_ERR_WINDOW_MS',
+        })
+      )
+    })
+
+    it('should error on `windowMs = -1`', () => {
+      validations.windowMs(-1)
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 'CRL_ERR_WINDOW_MS',
+        })
+      )
+    })
+  })
+
   
 })
