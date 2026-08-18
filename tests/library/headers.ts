@@ -2,7 +2,7 @@ import rateLimit from '../../src/rate-limit'
 import { describe, expect, it, jest } from "@jest/globals"
 import { createServer } from './create-server'
 import { agent as request } from 'supertest'
-import { Options, RateLimitInfo } from '../../src/types'
+import { ClientRateLimitInfo, Options, RateLimitInfo, Store } from '../../src/types'
 import { setDraft6Headers, setDraft7Headers, setDraft8Headers, setLegacyHeaders, setRetryAfterHeader } from '../../src/headers'
 import { Response } from 'express'
 
@@ -182,6 +182,41 @@ describe('headers test', () => {
         const response = await request(app).get('/').expect(200, 'Hello!')
         expect(response.get('ratelimit')).toBeUndefined()
         expect(response.get('ratelimit-policy')).toBeUndefined()
+    })
+
+    describe('store support that does not provide `resetTime`',  () => {
+        class MockStore implements Store {
+            hits: Map<string, number> = new Map()
+            
+            async get(key: string): Promise<ClientRateLimitInfo> {
+                return {
+                    totalHits: this.hits.get(key) ?? 0,
+                    resetTime: undefined,
+                }
+            }
+
+            async inc(key: string): Promise<ClientRateLimitInfo> {
+                const count = (this.hits.get(key) ?? 0) + 1
+                this.hits.set(key, count)
+                return { totalHits: count, resetTime: undefined }
+            }
+
+            async dec(_key: string): Promise<void> {}
+            async resetKey(_key: string): Promise<void> {}
+        }
+
+        it('should set the `retry-after` header to the value of `windowMs` in seconds instead', async () => {
+            const app = createServer(rateLimit({
+                limit: 1,
+                windowMs: 60 * 1000,
+                store: new MockStore(),
+                legacyHeaders: true,
+                standardHeaders: true,
+            }))
+
+            await request(app).get('/').expect(200)
+            await request(app).get('/').expect(429).expect('retry-after', '60')
+        })
     })
 
     
