@@ -608,5 +608,11 @@ describe("validation tests", () => {
     })
   })
 
-  
+  describe('limit', () => {
+		it('should not log a warning if limit is set to a non zero number', () => {
+			validations.limit(3)
+			expect(logger.error).not.toHaveBeenCalled()
+			expect(logger.warn).not.toHaveBeenCalled()
+		})
+	})
 })
