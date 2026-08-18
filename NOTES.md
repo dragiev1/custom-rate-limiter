@@ -5,14 +5,14 @@ A rate limiter will cap the amount of API requests to minimize resource usage an
 More precisely, it is system built to control the number of requests a user (IP address or service) can make to an application within a specific time interval. 
 I have decided to build a custom one to fully dive deep into the topic and understand the concept to its core. As well as implement it into my existing ongoing projects. 
 
-For both my own benefit, and anyone else following along, I will explain the thought process and requirements needed to build this.
+For both my own benefit, and anyone else following along, I will explain the thought process and requirements needed to build this as well.
 
 
 ## Core Rate Limiting Algorithm
 
 I will be using the fixed window counter approach. This is an implementation of the fixed window algorithm which is nice to see in application. 
-It uses the current window's count and a weighted percentage of the previous window's count to estimate a total. This makes it a balanced an accurate algorithm to use, as well as memory efficient. 
 
+Details about this approach will be explained shortly. 
 
 ## Key Components
 
