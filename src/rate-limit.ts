@@ -22,6 +22,7 @@ import {
   setDraft7Headers,
   setDraft8Headers,
   setLegacyHeaders,
+  setRetryAfterHeader,
 } from "./headers"
 import { getValidations, type Validations } from "./validations"
 
@@ -274,6 +275,10 @@ const rateLimit = (
     if (totalHits > limit) {
       //  Client limit reached block!
       debug('Limit exceeded')
+      if(config.legacyHeaders || config.standardHeaders) {
+        debug('Setting retry-after header')
+        setRetryAfterHeader(res, info, config.windowMs)
+      }
       config.handler(req, res, next, options)
       return
     }

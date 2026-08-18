@@ -101,7 +101,6 @@ export const setDraft8Headers = (
 }
 
 
-
 // Bare bones boilerplate method for setting headers conventionally
 export const setHeaders = (res: Response, info: RateLimitInfo) => {
   res.set('RateLimit-Limit', String(info.limit));
@@ -109,3 +108,14 @@ export const setHeaders = (res: Response, info: RateLimitInfo) => {
   res.set('RateLimit-Reset', String(info.resetTime?.getMinutes));
 }
 
+
+export const setRetryAfterHeader = (
+  res: Response,
+  info: RateLimitInfo,
+  windowMs: number,
+): void => {
+  if(res.headersSent) return
+
+  const resetSeconds = getSeconds(windowMs, info.resetTime)
+  res.setHeader('Retry-After', resetSeconds.toString())
+}
