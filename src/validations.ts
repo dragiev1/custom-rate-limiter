@@ -10,7 +10,7 @@ class ValidationError extends Error {
   help: string;
 
   constructor(code: string, message: string) {
-    const url = `https:custom-rate-limiter.github.io/${code}/`;
+    const url = `https:custom-rate-limiter.github.io/`;
     super(`${message} See ${url} for more info.`);
     this.name = this.constructor.name;
     this.code = code;

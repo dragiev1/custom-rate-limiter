@@ -7,8 +7,9 @@ import {
   expect,
 } from "@jest/globals"
 import { getValidations, Validations } from "../../src/validations"
-import { Logger, Store } from "../../src/types"
+import { Logger, Options, Store } from "../../src/types"
 import { MemoryStore } from '../../src/memory-store'
+import { ipKeyGen } from '../../src/ip-key-gen'
 import express from 'express'
 import supertest from "supertest"
 
@@ -536,4 +537,41 @@ describe("validation tests", () => {
         expect(logger.warn).not.toHaveBeenCalled()
     })
   })
+
+  describe('keyGeneratorIpFallback', () => {
+    it('should skip if keyGen is undefined', () => {
+      validations.keyGeneratorIpFallback(undefined)
+      expect(logger.error).not.toHaveBeenCalled()
+      expect(logger.warn).not.toHaveBeenCalled()
+    })
+
+    it('should not warn on that `keyGen` that does not use `req.ip` or `request.ip`', () => {
+      // Basic keyGen function that extracts API key from URL params, effectively ignoring req.ip 
+      const keyGen = (req: any, _res: any): string => req.params.apikey as string
+      validations.keyGeneratorIpFallback(keyGen)
+      expect(logger.warn).not.toHaveBeenCalled()
+      expect(logger.error).not.toHaveBeenCalled()
+    })
+
+    it('should throw a validation error if a `keyGen` uses req.ip', () => {
+      const keyGen = (req: any, _res: any): string => req.ip as string
+      validations.keyGeneratorIpFallback(keyGen)
+      expect(logger.warn).not.toHaveBeenCalled()
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 'CRL_ERR_KEY_GEN_IPV6',
+        })
+      )
+    })
+
+    it('should not throw a validation error on a `keyGen` that uses `request.ip` and `ipKeyGenerator`', () => {
+      validations.keyGeneratorIpFallback(
+        (req: any, _res: any): string => (req.params.apikey as string) || ipKeyGen(req.ip)
+      )
+      expect(logger.warn).not.toHaveBeenCalled()
+      expect(logger.error).not.toHaveBeenCalled()
+    })
+  })
+
+  
 })
