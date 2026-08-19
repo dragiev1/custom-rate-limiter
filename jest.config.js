@@ -6,7 +6,11 @@ const tsJestTransformCfg = createDefaultPreset().transform;
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: "node",
-  testMatch: ['**/tests/library/logger.ts'],
+  testMatch: ['**/tests/library/**/*.ts'],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    'create-server\\.ts'
+  ],
   transform: {
     ...tsJestTransformCfg,
   },

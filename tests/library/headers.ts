@@ -81,7 +81,8 @@ describe('headers test', () => {
     it('should handle multiple headers for the standard draft-8', async () => {
         const options: Partial<Options> = {
             standardHeaders: 'draft-8',
-            keyGen: (_req, _res) => 'foo'
+            keyGen: (_req, _res) => 'foo',
+            validate: false
         }
         
         const app = createServer([
