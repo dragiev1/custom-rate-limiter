@@ -6,7 +6,7 @@ const tsJestTransformCfg = createDefaultPreset().transform;
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: "node",
-  testMatch: ['**/tests/library/ip-key-gen.ts'],
+  testMatch: ['**/tests/library/logger.ts'],
   transform: {
     ...tsJestTransformCfg,
   },
