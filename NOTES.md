@@ -114,7 +114,7 @@ An IPv6 address is made up of 128 bits. For example: `2001:0db8:85a3:0000:1111:2
 The first half is the "Network Prefix." It is the local network assigned by the ISP.
 The second half is the "Interface Identifier." This represents the specific device, could be a phone, laptop, or a bot on this network. 
 
-*(A good thing to note is that most modern devices use privacy extensions to randomly generate that secondary half every time they connect to the internet to prevent tracking.)*
+*A good thing to note is that most modern devices use privacy extensions to randomly generate that secondary half every time they connect to the internet to prevent tracking.*
 
 The rate limiter will have different "leniency" settings based on aggressive we want the rate limiter to be. A list of common settings are ` 64 | 60 | 56 | 50 | 48 | 32 `. For example, `64` is a more lenient setting and `32` is very aggressive. Now what does that mean in context of the IPv6? 
 
@@ -125,7 +125,16 @@ Well, it means how many digits we are going to use to generalize the IPv6. Using
 
 This is how we can avoid, somewhat sophisticated, bots trying to overcome our rate limiter. We intentionally ignore the interface identifier with the `64` block setting, so we only add to the hit count if we see `2001:0db8:85a3:0000` and not the entire address. Now it's understandable that `32` is very harsh because it sees only 32 bits of the address or `2001:0db8`. This is why it can potentially block innocent users that did not need to be rate limited. The default setting we will use in the rate limiter will be the `56` bits. 
 
+## IPv4 vs IPv6
 
+Another type of identification is through IPv4 addresses that take the simple form: `a.b.c.d`. Something you can notice right away is that it is much simpiler than the IPv6 address, but know that they can actual be equal and mean the same thing! The way this works is the IPv4 can be *embedded* inside the IPv6 address. 
+Ex: `::ffff:a.b.c.d`. 
+
+IPv4-compatitable IPv6 addresses back in the day looked like: `::a.b.c.d`. So the IPv4 `192.168.1.10` can look like: `::192.168.1.10`. Although, this is a deprecated format which was originally made for tunneling IPv4 over IPv6 networks. They still are around, however, so it is important to factor these cases into our rate limiter. 
+
+The type of IP is dependent on the user's ISP, VPN/proxy, and perhaps mobile networks which use NAT64. 
+
+So, this means in our rate limiter, we need to check if an IPv6 is secretly an IPv4 behind the scenes. The reason why we need to do this is suppose we have an incoming address that looks like, `::ffff:192.168.1.10`, and we applied the default `/56` subnet mask we discussed about earlier. This would be disastrous because beneath the hood, `::ffff:192.168.1.10 = 0000:0000:0000:0000:0000:ffff:c0a8:010a`. So applying the subnet mask would ignore the actual unique data in the last 32 bits, which would obviously rate limit many innocent users. This is exactly why checking if there is an IPv4 address inside of the IPv6 one is so important to do. It properly limit rates the real user's identity without affecting other individuals. 
 
 ## Core Logic
 
@@ -239,7 +248,7 @@ I want to go over all the types of configurations to be possible in this rate li
 * `ipv6Subnet`: Subnet mask settings for rate limiting sensitivity based on developer's desires. 
 
 
-### Some Further Explainations
+### Further Explainations on Configuration Options
  
 When I started researching on this topic, I was very confused on a lot of different needs listed above. I want to explain below every single thing that is not so obvious when first starting out. 
 
