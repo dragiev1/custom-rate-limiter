@@ -5,6 +5,7 @@ import { agent as request } from 'supertest'
 import { ClientRateLimitInfo, Options, RateLimitInfo, Store } from '../../src/types'
 import { setDraft6Headers, setDraft7Headers, setDraft8Headers, setLegacyHeaders, setRetryAfterHeader } from '../../src/headers'
 import { Response } from 'express'
+import { parseRateLimit } from 'ratelimit-header-parser'
 
 describe('headers test', () => {
     it('should send the correct `x-ratelimit-limit`, `x-ratelimit-remaining`, `x-ratelimit-reset` headers', async () => {
@@ -219,5 +220,103 @@ describe('headers test', () => {
         })
     })
 
-    
+    describe('ratelimit-header-parset compatibility', () => {
+        it('should emit legacy headers that ratelimit-header-parset can read', async () => {
+            const app = createServer(rateLimit({
+                limit: 1,
+                windowMs: 60 * 1000,
+                legacyHeaders: true,
+                standardHeaders: false,
+            }))
+
+            const response = await request(app).get('/').expect(200)
+            const rateLimitDetails = parseRateLimit(response as any)
+
+            expect(rateLimitDetails).toMatchObject({
+                used: 1,
+                remaining: 0,
+                limit: 1,
+                reset: expect.any(Date)
+            })
+        })
+
+        it('should emit standard draft-6 headers that ratelimit-header-parset can read', async () => {
+            const app = createServer(rateLimit({
+                windowMs: 60 * 1000,
+                limit: 5,
+                legacyHeaders: false,
+                standardHeaders: 'draft-6',
+            }))
+
+            const response = await request(app).get('/').expect(200, 'Hello!')
+            const rateLimitInfo = parseRateLimit(response as any)
+
+            expect(rateLimitInfo).toMatchObject({
+                used: 1,
+                remaining: 4,
+                limit: 5,
+                reset: expect.any(Date)
+            })
+        })
+
+        it('should emit a standard draft-7 combined header that ratelimit-header-parser can read', async () => {
+            const app = createServer(rateLimit({
+                windowMs: 60 * 1000,
+                limit: 5,
+                legacyHeaders: false,
+                standardHeaders: 'draft-7'
+            }))
+
+            const response = await request(app).get('/').expect(200, 'Hello!')
+            const rateLimitInfo = parseRateLimit(response as any)
+
+            expect(rateLimitInfo).toMatchObject({
+                used: 1,
+                remaining: 4,
+                limit: 5,
+                reset: expect.any(Date)
+            })
+        })
+
+        it('should send RateLimit-Reset header with a value of 0 when window has just expired for draft-6', async () => {
+            class MockStore implements Store {
+                hits: Map<string, number> = new Map()
+
+                async get(key: string): Promise<ClientRateLimitInfo> {
+                    return {
+                        totalHits: this.hits.get(key) ?? 0,
+                        resetTime: new Date(Date.now())
+                    }
+                }
+
+                async inc(key: string): Promise<ClientRateLimitInfo> {
+                    const count = (this.hits.get(key) ?? 0) + 1
+                    this.hits.set(key, count)
+                    return {
+                        totalHits: count,
+                        resetTime: new Date(Date.now())
+                    }
+                }
+
+                async dec(_key: string): Promise<void> {}
+                async resetKey(_key: string): Promise<void> {}
+            }
+            
+            const app = createServer(rateLimit({
+                windowMs: 60 * 1000,
+                limit: 5,
+                store: new MockStore(),
+                legacyHeaders: false,
+                standardHeaders: 'draft-6'
+            }))
+
+            await request(app)
+                .get('/')
+                .expect(200, 'Hello!')
+                .expect('ratelimit-policy', '5;w=60')
+                .expect('ratelimit-limit', '5')
+                .expect('ratelimit-remaining', '4')
+                .expect('ratelimit-reset', '0')
+        })
+    })
 })
