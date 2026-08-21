@@ -1,7 +1,7 @@
 import rateLimit from "../../../../src/rate-limit"
 import createServer from 'express'
 
-import MemcachedAdapter from './memcached-adapter'
+import MemcachedAdapter from "./memcached-adapter"
 
 // Basic express app
 const app = createServer()
@@ -12,9 +12,7 @@ app.use(
         message: 'Thou shall not pass',
         // Memcached adapter setup
         store: new MemcachedAdapter({
-            // Connection string to local machine, 11211 is the door to Memcached Docker container
-            uri: '127.0.0.1.:11211',
-            // Errors are displayed as: 'rate-limit-memcached: [Error]'
+            uri: '127.0.0.1:11211',
             errorHandler: console.error.bind(null, 'rate-limit-memcached'),
         }),
     })
