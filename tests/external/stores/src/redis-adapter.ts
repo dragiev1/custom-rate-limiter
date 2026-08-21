@@ -9,11 +9,11 @@ class RedisAdapter implements Store {
         this.externalStore = new RedisStore(options)
     }
 
-    async inc(key: string): Promise<ClientRateLimitInfo> {
+    async increment(key: string): Promise<ClientRateLimitInfo> {
         return this.externalStore.increment(key)
     }
 
-    async dec(key: string): Promise<void> {
+    async decrement(key: string): Promise<void> {
         return this.externalStore.decrement(key)
     }
 

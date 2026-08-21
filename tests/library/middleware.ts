@@ -58,7 +58,7 @@ describe("middleware test", () => {
       return { totalHits: this.counter, resetTime: undefined }
     }
   
-    async inc(_key: string): Promise<ClientRateLimitInfo> {
+    async increment(_key: string): Promise<ClientRateLimitInfo> {
       this.counter += 1
       this.incrementWasCalled = true
   
@@ -68,7 +68,7 @@ describe("middleware test", () => {
       }
     }
   
-    async dec(_key: string): Promise<void> {
+    async decrement(_key: string): Promise<void> {
       this.counter -= 1
       this.decrementWasCalled = true
     }
@@ -90,11 +90,11 @@ describe("middleware test", () => {
       throw new Error("Mock error!")
     }
   
-    async inc(_key: string): Promise<ClientRateLimitInfo> {
+    async increment(_key: string): Promise<ClientRateLimitInfo> {
       throw new Error("Mock error!")
     }
   
-    async dec(_key: string): Promise<void> {}
+    async decrement(_key: string): Promise<void> {}
   
     async resetKey(_key: string): Promise<void> {}
   
@@ -118,7 +118,7 @@ describe("middleware test", () => {
       this.windowMs = options.windowMs
     }
   
-    async inc(_key: string): Promise<ClientRateLimitInfo> {
+    async increment(_key: string): Promise<ClientRateLimitInfo> {
       this.counter += 1
       this.incrementWasCalled = true
   
@@ -128,7 +128,7 @@ describe("middleware test", () => {
       }
     }
   
-    async dec(_key: string): Promise<void> {
+    async decrement(_key: string): Promise<void> {
       this.counter -= 1
       this.decrementWasCalled = true
     }

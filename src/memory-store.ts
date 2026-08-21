@@ -45,7 +45,7 @@ export class MemoryStore implements Store {
   }
 
   //  Also responsible for creating new key value pairs if client is new
-  async inc(key: string): Promise<ClientRateLimitInfo> {
+  async increment(key: string): Promise<ClientRateLimitInfo> {
     const client = this.getClient(key)
     const now = Date.now()
   
@@ -56,7 +56,7 @@ export class MemoryStore implements Store {
     return client
   }
 
-  async dec(key: string): Promise<void> {
+  async decrement(key: string): Promise<void> {
     const client = this.getClient(key)
 
     if(client.totalHits > 0) client.totalHits--

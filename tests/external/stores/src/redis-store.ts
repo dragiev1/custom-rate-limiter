@@ -3,7 +3,6 @@ import rateLimit from '../../../../src/rate-limit'
 
 import { RedisStore } from 'rate-limit-redis'
 import { createClient } from 'redis'
-import RedisAdapter from './redis-adapter'
 
 // Basic express app
 const app = createServer()
@@ -15,7 +14,7 @@ await client.connect()
 app.use(rateLimit({
     limit: 3,
     message: 'Thou shall not pass',
-    store: new RedisAdapter({
+    store: new RedisStore({
         sendCommand: (...args) => client.sendCommand(args),
     }),
 }))

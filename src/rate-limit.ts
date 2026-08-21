@@ -129,7 +129,7 @@ const rateLimit = (
     let totalHits = 0
     let resetTime
     try {
-      const incResult = await config.store.inc(key)
+      const incResult = await config.store.increment(key)
       //  Save local values temporarily
       totalHits = incResult.totalHits
       resetTime = incResult.resetTime
@@ -236,7 +236,7 @@ const rateLimit = (
           if (resetTime && Date.now() >= resetTime.getTime()) return
           
           debug('Decrementing hit count')
-          await config.store.dec(key)
+          await config.store.decrement(key)
           decremented = true
         }
       }
@@ -415,8 +415,8 @@ const parseOptions = (passedOptions: Partial<Options>): Configuration => {
 
   //  Check that the store correctly implemented the Store interface
   if (
-    typeof config.store.inc !== "function" ||
-    typeof config.store.dec !== "function" ||
+    typeof config.store.increment !== "function" ||
+    typeof config.store.decrement !== "function" ||
     typeof config.store.resetKey !== "function" ||
     (typeof config.store.resetAll !== "function" &&
       typeof config.store.resetAll !== "undefined") ||

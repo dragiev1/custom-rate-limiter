@@ -105,10 +105,10 @@ export type Store = {
   ) => Promise<ClientRateLimitInfo | undefined> | ClientRateLimitInfo | undefined
 
   //  Increment a client's hit counter
-  inc: (key: string) => Promise<IncrementResponse> | IncrementResponse
+  increment: (key: string) => Promise<IncrementResponse> | IncrementResponse
 
   //  Decrement a client's hit counter
-  dec: (key: string) => Promise<void> | void
+  decrement: (key: string) => Promise<void> | void
 
   //  Resets client's hit counter
   resetKey: (key: string) => Promise<void> | void

@@ -29,7 +29,7 @@ describe("memory store test", () => {
     store.init({ windowMs: min } as Options)
     const key = "test-score"
 
-    await store.inc(key)
+    await store.increment(key)
 
     const response = await store.get(key)
     expect(response).toMatchObject({
@@ -38,12 +38,12 @@ describe("memory store test", () => {
     })
   })
 
-  it("sets the value to 1 on first call to `inc`", async () => {
+  it("sets the value to 1 on first call to `increment`", async () => {
     const store = new MemoryStore()
     store.init({ windowMs: min } as Options)
-    const key = "testing-inc"
+    const key = "testing-increment"
 
-    const { totalHits } = await store.inc(key)
+    const { totalHits } = await store.increment(key)
     expect(totalHits).toEqual(1)
   })
 
@@ -52,8 +52,8 @@ describe("memory store test", () => {
     store.init({ windowMs: min } as Options)
     const key = "testing-dec"
 
-    await store.inc(key)
-    await store.dec(key)
+    await store.increment(key)
+    await store.decrement(key)
     const response = await store.get(key)
     expect(response?.totalHits).toEqual(0)
   })
@@ -63,9 +63,9 @@ describe("memory store test", () => {
     store.init({ windowMs: min } as Options)
     const key = "test-dec"
 
-    await store.inc(key) // totalHits = 1
-    await store.dec(key) // totalHits = 0
-    await store.dec(key) // totalHits = 0 (no change/not negative)
+    await store.increment(key) // totalHits = 1
+    await store.decrement(key) // totalHits = 0
+    await store.decrement(key) // totalHits = 0 (no change/not negative)
 
     const response = await store.get(key)
     expect(response).toBeDefined()
@@ -76,7 +76,7 @@ describe("memory store test", () => {
     const store = new MemoryStore()
     const key = "test-resetKey"
 
-    await store.inc(key)
+    await store.increment(key)
     let response = await store.get(key)
     expect(response).toBeDefined()
 
@@ -90,10 +90,10 @@ describe("memory store test", () => {
     const key = "test-resetKey"
     store.init({ windowMs: min } as Options)
 
-    await store.inc(key)
+    await store.increment(key)
     await store.resetKey(key)
 
-    const totalHits = (await store.inc(key)).totalHits
+    const totalHits = (await store.increment(key)).totalHits
     expect(totalHits).toEqual(1)
   })
 
@@ -103,8 +103,8 @@ describe("memory store test", () => {
     const key2 = "test-resetAll2"
     store.init({ windowMs: min } as Options)
 
-    await store.inc(key1)
-    await store.inc(key2)
+    await store.increment(key1)
+    await store.increment(key2)
     // Check if client rate limit info exists first for both keys
     let response1 = await store.get(key1)
     let response2 = await store.get(key2)
@@ -134,11 +134,11 @@ describe("memory store test", () => {
     const key1 = "test-resetKey1"
     const key2 = "test-resetKey2"
 
-    await store.inc(key1)
-    await store.inc(key2)
+    await store.increment(key1)
+    await store.increment(key2)
     jest.advanceTimersByTime(min + 1000) // 61 seconds later
-    const { totalHits: totalHits1 } = await store.inc(key1)
-    const { totalHits: totalHits2 } = await store.inc(key2)
+    const { totalHits: totalHits1 } = await store.increment(key1)
+    const { totalHits: totalHits2 } = await store.increment(key2)
     expect(totalHits1).toEqual(1)
     expect(totalHits2).toEqual(1)
   })
@@ -169,7 +169,7 @@ describe("memory store test", () => {
     const key = "test-store"
 
     try {
-      const { totalHits } = await store.inc(key)
+      const { totalHits } = await store.increment(key)
       expect(totalHits).toEqual(1)
     } finally {
       // @ts-expect-error  `realTimeoutId` is already set in the `spyOn` call
@@ -192,7 +192,7 @@ describe("memory store test", () => {
     store.init({ windowMs: min} as Options)
     const key = 'test-store'
 
-    await store.inc(key)
+    await store.increment(key)
     expect(store.current.has(key)).toEqual(true)
     expect(store.previous.has(key)).toEqual(false)
 
@@ -200,7 +200,7 @@ describe("memory store test", () => {
     expect(store.current.has(key)).toEqual(false)
     expect(store.previous.has(key)).toEqual(true)
 
-    await store.inc(key)
+    await store.increment(key)
     expect(store.current.has(key)).toEqual(true)
     expect(store.previous.has(key)).toEqual(false)
   })
@@ -211,18 +211,18 @@ describe("memory store test", () => {
     const key2 = 'test-key2'
     store.init({ windowMs: min } as Options)
 
-    await store.inc(key1)
+    await store.increment(key1)
     jest.advanceTimersByTime(100)
-    await store.inc(key1)
-    await store.inc(key2)
-    let returnValue1 = await store.inc(key1)
+    await store.increment(key1)
+    await store.increment(key2)
+    let returnValue1 = await store.increment(key1)
     expect(returnValue1.totalHits).toBe(3)
 
-    const returnValue3 = await store.inc('key3')
+    const returnValue3 = await store.increment('key3')
     expect(returnValue1).not.toBe(returnValue3)
     expect(returnValue3.totalHits).toBe(1)
 
-    returnValue1 = await store.inc(key1)
+    returnValue1 = await store.increment(key1)
     expect(returnValue1.totalHits).toBe(4)  // Should be a 4, 2 would mean there's a reuse bug
   })
 })

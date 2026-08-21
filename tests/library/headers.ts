@@ -197,13 +197,13 @@ describe('headers test', () => {
                 }
             }
 
-            async inc(key: string): Promise<ClientRateLimitInfo> {
+            async increment(key: string): Promise<ClientRateLimitInfo> {
                 const count = (this.hits.get(key) ?? 0) + 1
                 this.hits.set(key, count)
                 return { totalHits: count, resetTime: undefined }
             }
 
-            async dec(_key: string): Promise<void> {}
+            async decrement(_key: string): Promise<void> {}
             async resetKey(_key: string): Promise<void> {}
         }
 
@@ -290,7 +290,7 @@ describe('headers test', () => {
                     }
                 }
 
-                async inc(key: string): Promise<ClientRateLimitInfo> {
+                async increment(key: string): Promise<ClientRateLimitInfo> {
                     const count = (this.hits.get(key) ?? 0) + 1
                     this.hits.set(key, count)
                     return {
@@ -299,7 +299,7 @@ describe('headers test', () => {
                     }
                 }
 
-                async dec(_key: string): Promise<void> {}
+                async decrement(_key: string): Promise<void> {}
                 async resetKey(_key: string): Promise<void> {}
             }
             
