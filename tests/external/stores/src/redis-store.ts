@@ -8,6 +8,7 @@ import RedisAdapter from './redis-adapter'
 const app = createServer()
 // Redis setup
 const client = createClient()
+// @ts-ignore 
 await client.connect()
 
 // Middleware setup
