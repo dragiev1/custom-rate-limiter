@@ -2,6 +2,7 @@
 import { ClientRateLimitInfo, Store } from '../../../../src/types'
 import { RedisStore } from 'rate-limit-redis'
 
+// Wrapper class
 class RedisAdapter implements Store {
     private externalStore: RedisStore
 
